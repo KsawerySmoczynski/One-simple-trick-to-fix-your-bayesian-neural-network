@@ -60,7 +60,7 @@ profile = "black"
 
 [tool.coverage.run]
 source_pkgs = [
-    "aic",
+    "src",
 ]
 
 [tool.coverage.report]
