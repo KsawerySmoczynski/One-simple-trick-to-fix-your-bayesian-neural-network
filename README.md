@@ -27,5 +27,5 @@ poetry run pre-commit install
 ### To run experiments
 Just run:
 ```bash
-python scr/train.py --config configs/00_basic_config.yaml
+python scripts/train.py --config configs/00_basic_config.yaml
 ```

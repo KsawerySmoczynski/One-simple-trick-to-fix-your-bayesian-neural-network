@@ -17,21 +17,22 @@ def get_dataset(path: str, dataset: Dataset, transform) -> Dataset:
 
 class DataModule(LightningDataModule):
     def __init__(
-        self, dataset: str, dataset_path: str, train_batch_size: int, valtest_batch_size: int, num_workers: int = 0
+        self, dataset: str, dataset_path: str, train_batch_size: int, valtest_batch_size: int, in_channels:int, num_workers: int = 0
     ):
         super().__init__()
         self.dataset = dataset
         self.dataset_path = dataset_path
         self.train_batch_size = train_batch_size
         self.valtest_batch_size = valtest_batch_size
+        self.normalization = ((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)) if in_channels!=1 else  ((0.1307,), (0.3081,))
         self.train_transform = A.Compose(
             [
                 A.ToTensor(),
-                A.Normalize((0.5), (0.2)),
+                A.Normalize(*self.normalization),
                 A.RandomAffine(degrees=(0, 70), translate=(0.1, 0.3), scale=(0.8, 1.2)),
             ]
         )
-        self.val_test_transform = A.Compose([A.ToTensor(), A.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])
+        self.val_test_transform = A.Compose([A.ToTensor(), A.Normalize(*self.normalization)])
         self.splits = {"train": 0.7, "val": 0.15, "test": 0.15}
         self.num_workers = num_workers
 

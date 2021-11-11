@@ -3,6 +3,9 @@ name = "bayesian"
 version = "0.1.0"
 description = ""
 authors = ["Ksawery Smoczyński <k.smocz@gmail.com>"]
+packages = [
+    { include = "src" },
+]
 
 [tool.poetry.dependencies]
 python = "^3.8"

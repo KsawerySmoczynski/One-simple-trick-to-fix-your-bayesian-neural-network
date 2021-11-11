@@ -3,9 +3,10 @@ from typing import Any
 import torch as t
 from torch import nn
 from pytorch_lightning import LightningModule
-
-from models.FCN import FCN
 from torchmetrics.functional import accuracy
+
+
+from src.models.FCN import FCN
 
 
 class BayesianModule(LightningModule):
@@ -25,6 +26,14 @@ class BayesianModule(LightningModule):
         self.log("loss", loss.item(), on_step=True, on_epoch=True)
         self.log("accuracy", accuracy(y_hat, y), on_step=True, on_epoch=True)
         return loss
+
+    def validation_step(self, batch, batch_idx):
+        x, y = batch
+        y_hat = self.forward(x)
+        loss = self.criterion(y_hat, y)
+        self.log("loss", loss.item(), on_epoch=True)
+        self.log("accuracy", accuracy(y_hat, y), on_epoch=True)
+
     
     def test_step(self):
         pass
