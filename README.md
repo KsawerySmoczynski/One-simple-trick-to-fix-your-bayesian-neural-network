@@ -2,7 +2,6 @@
 
 ## Setup
 
-
 1. Install [pyenv](https://github.com/pyenv/pyenv) on your machine if you didn't do it already.
 ```
 2. Install latest Python 3.8 if you don't have it already:
@@ -23,4 +22,10 @@ poetry install
 6. Install pre-commit hooks using:
 ```bash
 poetry run pre-commit install
+```
+
+### To run experiments
+Just run:
+```bash
+python scr/train.py --config configs/00_basic_config.yaml
 ```
