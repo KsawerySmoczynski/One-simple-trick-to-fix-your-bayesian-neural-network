@@ -1,5 +1,23 @@
 # Experiments repo
 
+## Experiments
+### To run experiments
+
+```bash
+python scripts/train.py --config configs/00_basic_config.yaml
+```
+In order to run full suite of experiments run:
+```bash
+bash scripts/experiment.sh
+```
+
+### To evaluate weights:
+  * Replace the paths in the scripts/evaluate_weights.sh with your own path from the model previously trained with the above mentioned command.
+  * Just run
+      ```bash
+      bash scripts/valuate_weights.sh
+      ```
+
 ## Setup
 
 1. Install [pyenv](https://github.com/pyenv/pyenv) on your machine if you didn't do it already.
@@ -22,10 +40,4 @@ poetry install
 6. Install pre-commit hooks using:
 ```bash
 poetry run pre-commit install
-```
-
-### To run experiments
-Just run:
-```bash
-python scripts/train.py --config configs/00_basic_config.yaml
 ```
