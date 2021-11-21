@@ -1,8 +1,19 @@
 #data
 lightning_logs
 datasets
-configs
+configs/CIFAR10
+configs/FashionMNIST
+configs/*/local
+!configs/MNIST
 !configs/00_basic_config.yaml
+!configs/MNIST/FCCN.yaml
+logs
+test
+
+#files
+*.pt
+*.ckpt
+*.pth
 
 #vscode configs
 .vscode
