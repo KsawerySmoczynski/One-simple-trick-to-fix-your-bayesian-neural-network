@@ -1,5 +1,6 @@
-from src.commons.module import BayesianModule
-from src.commons.data import DataModule
 from src.commons.cli import BayesianCLI
+from src.commons.data import DataModule
+from src.commons.module import BayesianModule
 
-BayesianCLI(model_class=BayesianModule, datamodule_class=DataModule)
+cli = BayesianCLI(model_class=BayesianModule, datamodule_class=DataModule)
+cli.trainer.test(datamodule=cli.datamodule)
