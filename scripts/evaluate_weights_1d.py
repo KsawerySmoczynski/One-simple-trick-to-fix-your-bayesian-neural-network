@@ -73,7 +73,7 @@ for layer_name, weights_indices in sampled_indices.items():
         # i = np.random.randint(0, original_parameters.numel()-1, size=1)
         # original_weight = original_parameters[i].item()
         # vector_to_parameters(original_parameters, net.parameters())
-        for value in t.linspace(original_weight - window, original_weight + window, rate, device=DEVICE):
+        for value in t.linspace(original_weight - window // 2, original_weight + window // 2, rate, device=DEVICE):
             print(".", end="")
             net.state_dict()[layer_name][tuple(weight_idx)] = value
             # modify_parameter(net, i, value)
