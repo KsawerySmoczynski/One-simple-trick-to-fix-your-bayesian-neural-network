@@ -36,8 +36,7 @@ def plot_2d(df, val1, i1, val2, i2, window, rate, train_limit, save_path: str = 
     )
     plt.contourf(X, Y, p.reshape(length, length), levels=np.linspace(0, p.max(), 20))
     plt.colorbar()
-    plt.title(f"i1:{i1}, val: {val1:.4f}")
-    plt.title(f"i2:{i2}, val: {val2:.4f}")
+    plt.title(f"i1:{i1}, val: {val1:.4f} X i2:{i2}, val: {val2:.4f}")
     if save_path:
         plt.savefig(save_path)
     else:
