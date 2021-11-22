@@ -23,16 +23,18 @@ def plot_1d(df, val, i, train_limit, save_path: str = None):
         plt.show()
 
 
-def plot_2d(df, val1, i1, val2, i2, train_limit, save_path: str = None):
+def plot_2d(df, val1, i1, val2, i2, window, rate, train_limit, save_path: str = None):
     good = df[:, 3].astype("float") / train_limit
     logp = df[:, 2]
     p = np.exp(logp - np.max(logp))
     length = np.sqrt(len(p))
     assert int(length) == length
     length = int(length)
-    #     X, Y = np.meshgrid(df[:,0], df[:,1])
-    #     plt.contourf(X, Y, p.reshape(length, length))
-    plt.contourf(p.reshape(length, length), levels=np.linspace(0, 1, 20))
+    X, Y = np.meshgrid(
+        np.linspace(val1 - window // 2, val1 + window // 2, rate),
+        np.linspace(val2 - window // 2, val2 + window // 2, rate),
+    )
+    plt.contourf(X, Y, p.reshape(length, length), levels=np.linspace(0, p.max(), 20))
     plt.colorbar()
     plt.title(f"i1:{i1}, val: {val1:.4f}")
     plt.title(f"i2:{i2}, val: {val2:.4f}")
@@ -40,3 +42,4 @@ def plot_2d(df, val1, i1, val2, i2, train_limit, save_path: str = None):
         plt.savefig(save_path)
     else:
         plt.show()
+    plt.close()

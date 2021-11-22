@@ -61,30 +61,54 @@ draw_weight = lambda shape, range: t.tensor(np.array([np.random.choice(dim, rang
 # Num sampled weights
 n_weights = 2
 layers_shapes = {k: v.shape for k, v in net.state_dict().items() if "weight" in k}
-sampled_indices = {k: draw_weight(v, n_weights) for k, v in layers_shapes.items()}
-sampled_indices2 = {k: draw_weight(v, n_weights) for k, v in layers_shapes.items()}
 
+# From same layers
+# sampled_indices = {k: draw_weight(v, n_weights) for k, v in layers_shapes.items()}
+# sampled_indices2 = {k: draw_weight(v, n_weights) for k, v in layers_shapes.items()}
+
+# Random layers
+n_layers = 4
+layers_names = list(layers_shapes.keys())
+layers = [layers_names[idx] for idx in np.random.randint(0, len(layers_shapes.keys()), size=n_layers)]
+layers2 = [layers_names[idx] for idx in np.random.randint(0, len(layers_shapes.keys()), size=n_layers)]
+sampled_indices = {layer: draw_weight(layers_shapes[layer], n_weights) for layer in layers}
+sampled_indices2 = {layer: draw_weight(layers_shapes[layer], n_weights) for layer in layers2}
 
 window = 20
-rate = 40
+rate = 50
 
-for (layer_name, weights_indices), weights_indices_2 in zip(sampled_indices.items(), sampled_indices2.values()):
+for (layer_name, weights_indices), (layer_name2, weights_indices_2) in zip(
+    sampled_indices.items(), sampled_indices2.items()
+):
     for weight_idx, weight_idx2 in zip(weights_indices, weights_indices_2):
         original_weight = net.state_dict()[layer_name][tuple(weight_idx)].clone()
-        original_weight2 = net.state_dict()[layer_name][tuple(weight_idx2)].clone()
+        original_weight2 = net.state_dict()[layer_name2][tuple(weight_idx2)].clone()
         df = []
-        for value in t.linspace(original_weight - window, original_weight + window, rate, device=DEVICE):
+        for value in t.linspace(original_weight - window // 2, original_weight + window // 2, rate, device=DEVICE):
             net.state_dict()[layer_name][tuple(weight_idx)] = value
-            for value2 in t.linspace(original_weight2 - window, original_weight2 + window, rate, device=DEVICE):
+            for value2 in t.linspace(
+                original_weight2 - window // 2, original_weight2 + window // 2, rate, device=DEVICE
+            ):
                 net.state_dict()[layer_name][tuple(weight_idx2)] = value2
                 ll, good = calculate_ll(train_loader, net, DEVICE)
-            net.state_dict()[layer_name][tuple(weight_idx2)] = original_weight2
+                df.append((value, value2, ll, good))
+            net.state_dict()[layer_name2][tuple(weight_idx2)] = original_weight2
             print(".", end="")
-            df.append((value, value2, ll, good))
         net.state_dict()[layer_name][tuple(weight_idx)] = original_weight
         df = t.tensor(df).cpu().numpy()
         id1 = f"{layer_name}_{'_'.join(map(str, weight_idx.cpu().numpy()))}"
-        id2 = f"{layer_name}_{'_'.join(map(str, weight_idx.cpu().numpy()))}"
+        id2 = f"{layer_name2}_{'_'.join(map(str, weight_idx2.cpu().numpy()))}"
         plot_2d(
-            df, original_weight.item(), id1, original_weight2.item(), id2, train_limit, f"{save_dir}/{id1}x{id2}.png"
+            df,
+            original_weight.item(),
+            id1,
+            original_weight2.item(),
+            id2,
+            window,
+            rate,
+            train_limit,
+            f"{save_dir}/{id1}x{id2}.png",
         )
+        print(f"Evaluated for:")
+        print(f"{id1}")
+        print(f"{id2}")
