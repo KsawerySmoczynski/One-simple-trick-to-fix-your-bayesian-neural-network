@@ -7,27 +7,26 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import torch as t
-from torch.nn.utils import parameters_to_vector, vector_to_parameters
-from torch.optim.lr_scheduler import StepLR
+from torch.nn.utils import parameters_to_vector
 from torchvision import datasets, transforms
 
 from src.commons.io import load_net, parse_net_class
-from src.commons.plotting import plot_1d, plot_2d
-from src.commons.utils import calculate_ll, modify_parameter
-
-DEVICE = "cuda" if t.cuda.is_available() else "cpu"
-SEED = 42
-
-t.manual_seed(SEED)
-random.seed(SEED)
-np.random.seed(SEED)
+from src.commons.plotting import plot_2d
+from src.commons.utils import calculate_ll
 
 parser = ArgumentParser()
 parser.add_argument("net_path", type=str, help="Path to the pytorch lightning checkpoint or pytorch pickled state dict")
 parser.add_argument("net_config_path", type=str, help="Path to config.yaml file from pytorch-lightning trainig")
 parser.add_argument("processes", type=int, help="Number of processes for data loaders")
 parser.add_argument("--save-dir", type=str, help="Path to directory where plots, etc. will be saved")
+parser.add_argument("--seed", type=int, help="Seed for rngs")
 args = parser.parse_args()
+
+DEVICE = "cuda" if t.cuda.is_available() else "cpu"
+
+t.manual_seed(args.seed)
+random.seed(args.seed)
+np.random.seed(args.seed)
 
 net = parse_net_class(args.net_config_path)
 net = load_net(net, args.net_path, device=DEVICE)
@@ -69,12 +68,13 @@ layers_shapes = {k: v.shape for k, v in net.state_dict().items() if "weight" in 
 # Random layers
 n_layers = 4
 layers_names = list(layers_shapes.keys())
-layers = [layers_names[idx] for idx in np.random.randint(0, len(layers_shapes.keys()), size=n_layers)]
-layers2 = [layers_names[idx] for idx in np.random.randint(0, len(layers_shapes.keys()), size=n_layers)]
+layers = [layers_names[idx] for idx in np.random.randint(0, len(layers_shapes.keys()), size=2 * n_layers)]
+layers2 = layers[n_layers:]
+layers = layers[:n_layers]
 sampled_indices = {layer: draw_weight(layers_shapes[layer], n_weights) for layer in layers}
 sampled_indices2 = {layer: draw_weight(layers_shapes[layer], n_weights) for layer in layers2}
 
-window = 20
+window = 30
 rate = 50
 
 for (layer_name, weights_indices), (layer_name2, weights_indices_2) in zip(
@@ -89,7 +89,7 @@ for (layer_name, weights_indices), (layer_name2, weights_indices_2) in zip(
             for value2 in t.linspace(
                 original_weight2 - window // 2, original_weight2 + window // 2, rate, device=DEVICE
             ):
-                net.state_dict()[layer_name][tuple(weight_idx2)] = value2
+                net.state_dict()[layer_name2][tuple(weight_idx2)] = value2
                 ll, good = calculate_ll(train_loader, net, DEVICE)
                 df.append((value, value2, ll, good))
             net.state_dict()[layer_name2][tuple(weight_idx2)] = original_weight2
