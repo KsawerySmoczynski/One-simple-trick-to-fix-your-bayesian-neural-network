@@ -74,8 +74,8 @@ layers = layers[:n_layers]
 sampled_indices = {layer: draw_weight(layers_shapes[layer], n_weights) for layer in layers}
 sampled_indices2 = {layer: draw_weight(layers_shapes[layer], n_weights) for layer in layers2}
 
-window = 30
-rate = 50
+window = 15
+rate = 40
 
 for (layer_name, weights_indices), (layer_name2, weights_indices_2) in zip(
     sampled_indices.items(), sampled_indices2.items()

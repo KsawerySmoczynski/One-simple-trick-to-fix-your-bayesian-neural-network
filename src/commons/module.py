@@ -40,4 +40,8 @@ class BayesianModule(LightningModule):
         self.log("test/accuracy", accuracy(y_hat, y), on_epoch=True)
 
     def configure_optimizers(self):
-        return t.optim.Adam(self.model.parameters(), lr=self.lr)
+        optim = t.optim.Adam(self.model.parameters(), lr=self.lr)
+        return {
+            "optimizer": optim,
+            "lr_scheduler": {"scheduler": t.optim.lr_scheduler.StepLR(optim, 150, gamma=0.05), "monitor": "loss"},
+        }
