@@ -23,20 +23,21 @@ def plot_1d(df, val, i, train_limit, save_path: str = None):
         plt.show()
 
 
-def plot_2d(df, val1, i1, val2, i2, window, rate, train_limit, save_path: str = None):
-    good = df[:, 3].astype("float") / train_limit
+def plot_2d(df, val1, i1, val2, i2, window, rate, train_limit, reference_ll, save_path: str = None):
+    # good = df[:, 3].astype("float") / train_limit
     logp = df[:, 2]
-    p = np.exp(logp - np.max(logp))
+    p = np.exp(logp - reference_ll)
     length = np.sqrt(len(p))
     assert int(length) == length
     length = int(length)
-    X, Y = np.meshgrid(
-        np.linspace(val1 - window // 2, val1 + window // 2, rate),
-        np.linspace(val2 - window // 2, val2 + window // 2, rate),
-    )
-    plt.contourf(X, Y, p.reshape(length, length), levels=np.linspace(0, p.max(), 20))
+    X = df[:, 1].reshape(length, length)
+    Y = df[:, 0].reshape(length, length)
+    plt.title(f"i1:{i1}, val: {val1:.4f}" + "\nX\n" + f"i2:{i2}, val: {val2:.4f}")
+    plt.axhline(y=val1, c="orchid", alpha=0.95)
+    plt.axvline(x=val2, c="orchid", alpha=0.95)
+    plt.contourf(X, Y, p.reshape(length, length), levels=np.linspace(0, p.max(), 20), cmap="terrain")
     plt.colorbar()
-    plt.title(f"i1:{i1}, val: {val1:.4f} X i2:{i2}, val: {val2:.4f}")
+
     if save_path:
         plt.savefig(save_path)
     else:
