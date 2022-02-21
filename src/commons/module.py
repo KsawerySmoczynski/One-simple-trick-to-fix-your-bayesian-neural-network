@@ -27,7 +27,7 @@ class BayesianModule(LightningModule):
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
-        y_hat = self.forward(x)
+        y_hat = self(x)
         loss = self.criterion(y_hat, y)
         self.log("validation/loss", loss.item(), on_epoch=True)
         self.log("validation/accuracy", accuracy(y_hat, y), on_epoch=True)

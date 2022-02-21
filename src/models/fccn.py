@@ -54,6 +54,6 @@ class FCN(Module):
         )
         self.print_parameter_size()
 
-    def _forward(self, x: t.Tensor) -> t.Tensor:
+    def forward(self, x: t.Tensor) -> t.Tensor:
         x = self.conv(x).squeeze(-1).squeeze(-1)
         return x

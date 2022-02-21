@@ -22,9 +22,14 @@ parser.add_argument("--window", type=int, required=True)
 parser.add_argument("--rate", type=int, required=True)
 parser.add_argument("--n-weights", type=int, required=True)
 choice = parser.add_mutually_exclusive_group()
-choice.add_argument("--layers", nargs=2, action="append")
-choice.add_argument("--n-random-layers", type=int)
-choice.add_argument("--sequential-random", action="store_true")
+choice.add_argument(
+    "--layers",
+    nargs=2,
+    action="append",
+    help="Give layer names to compare, takes 2 arguments. In order to get the layers of your model run script with debug flag",
+)
+choice.add_argument("--n-random-layers", type=int, help="Draw n pairs of layers to compare.")
+choice.add_argument("--same-layers", action="store_true")
 parser.add_argument("--save-dir", type=str, help="Path to directory where plots, etc. will be saved")
 # TODO mutually exclusive, autoestimate max batch with in-memory
 parser.add_argument("--batch-size", type=int, default=128)
@@ -116,7 +121,22 @@ if args.debug:
     sys.exit()
 
 reference_ll, _ = calculate_ll(train_loader, net, DEVICE)
+reference_ll /= train_limit
 
+
+# Search ranges
+search_ranges = {}
+for (layer_name, weights_indices), (layer_name2, weights_indices_2) in si:
+    # Layer 1
+
+    search_ranges[(layer_name, weights_indices)] = None
+
+    # Layer 2
+
+    search_ranges[(layer_name, weights_indices)] = None
+
+
+# 2D layers
 for (layer_name, weights_indices), (layer_name2, weights_indices_2) in si:
     for weight_idx, weight_idx2 in zip(weights_indices, weights_indices_2):
         original_weight = net.state_dict()[layer_name][tuple(weight_idx)].clone()
@@ -127,7 +147,7 @@ for (layer_name, weights_indices), (layer_name2, weights_indices_2) in si:
             for value2 in t.linspace(original_weight2 - window / 2, original_weight2 + window / 2, rate, device=DEVICE):
                 net.state_dict()[layer_name2][tuple(weight_idx2)] = value2
                 ll, good = calculate_ll(train_loader, net, DEVICE)
-                df.append((value, value2, ll, good))
+                df.append((value, value2, ll / train_limit, good))
             net.state_dict()[layer_name2][tuple(weight_idx2)] = original_weight2
             print(".", end="")
         net.state_dict()[layer_name][tuple(weight_idx)] = original_weight
@@ -140,9 +160,6 @@ for (layer_name, weights_indices), (layer_name2, weights_indices_2) in si:
             id1,
             original_weight2.item(),
             id2,
-            window,
-            rate,
-            train_limit,
             reference_ll,
             f"{save_dir}/{id1}x{id2}.png",
         )

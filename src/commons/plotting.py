@@ -23,8 +23,7 @@ def plot_1d(df, val, i, train_limit, save_path: str = None):
         plt.show()
 
 
-def plot_2d(df, val1, i1, val2, i2, window, rate, train_limit, reference_ll, save_path: str = None):
-    # good = df[:, 3].astype("float") / train_limit
+def plot_2d(df, val1, i1, val2, i2, reference_ll, save_path: str = None):
     logp = df[:, 2]
     p = np.exp(logp - reference_ll)
     length = np.sqrt(len(p))
@@ -35,11 +34,11 @@ def plot_2d(df, val1, i1, val2, i2, window, rate, train_limit, reference_ll, sav
     plt.title(f"i1:{i1}, val: {val1:.4f}" + "\nX\n" + f"i2:{i2}, val: {val2:.4f}")
     plt.axhline(y=val1, c="orchid", alpha=0.95)
     plt.axvline(x=val2, c="orchid", alpha=0.95)
-    plt.contourf(X, Y, p.reshape(length, length), levels=np.linspace(0, 2, 20), cmap="terrain")
+    plt.contourf(X, Y, p.reshape(length, length), levels=np.linspace(0, p.max(), 25), cmap="terrain")
     plt.colorbar()
 
     if save_path:
-        plt.savefig(save_path)
+        plt.savefig(save_path, bbox_inches="tight", transparent=True)
     else:
         plt.show()
     plt.close()
