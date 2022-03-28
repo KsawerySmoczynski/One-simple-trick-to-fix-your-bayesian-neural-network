@@ -43,5 +43,5 @@ class BayesianModule(LightningModule):
         optim = t.optim.Adam(self.model.parameters(), lr=self.lr)
         return {
             "optimizer": optim,
-            "lr_scheduler": {"scheduler": t.optim.lr_scheduler.StepLR(optim, 150, gamma=0.05), "monitor": "loss"},
+            "lr_scheduler": {"scheduler": t.optim.lr_scheduler.StepLR(optim, 150, gamma=0.5), "monitor": "loss"},
         }

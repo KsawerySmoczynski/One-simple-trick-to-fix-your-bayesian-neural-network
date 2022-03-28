@@ -10,5 +10,5 @@ data:
   dataset: "MNIST"
   dataset_path: "datasets"
   num_workers: 16
-  train_batch_size: 128
-  valtest_batch_size: 128
+  train_batch_size: 256
+  valtest_batch_size: 256
