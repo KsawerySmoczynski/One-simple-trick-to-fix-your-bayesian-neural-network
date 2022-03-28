@@ -82,17 +82,17 @@ for e in range(epochs):
     print(loss)
 
     # TEST
-    predictive = Predictive(model, guide=guide, num_samples=num_test_samples, return_sites=("obs",))
-    for i, (X, y) in enumerate(inmemory_test_loader):
-        output = torch.cat(
-            [
-                sample.unique(sorted=True, return_counts=True)[1] / num_test_samples
-                for sample in predictive(X.cuda())["_RETURN"].T
-            ]
-        )
-        output = output.reshape(6000, 10)
-        acc = test_accuracy(output, y)
-        print("siema")
+    # predictive = Predictive(model, guide=guide, num_samples=num_test_samples, return_sites=("obs",))
+    # for i, (X, y) in enumerate(inmemory_test_loader):
+    #     output = torch.cat(
+    #         [
+    #             sample.unique(sorted=True, return_counts=True)[1] / num_test_samples
+    #             for sample in predictive(X.cuda())["_RETURN"].T
+    #         ]
+    #     )
+    #     output = output.reshape(6000, 10)
+    #     acc = test_accuracy(output, y)
+    #     print("siema")
 
 
 def summary(samples):
