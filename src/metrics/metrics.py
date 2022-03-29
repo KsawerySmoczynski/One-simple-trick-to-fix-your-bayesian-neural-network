@@ -25,9 +25,8 @@ def PCIP(y_true: np.array, y_pred: np.array, percentile: float = 50.0):
     return pcip
 
 
-def MPIW(y_true: np.array, y_pred: np.array, percentile: float = 50.0):
+def MPIW(y_pred: np.array, percentile: float = 50.0):
     """
-    :param y_true: tensor with true values. Dimensions: batch_size
     :param y_pred: tensor with sample predictions from the model. Dimensions: batch_size x n_samples
     :param percentile: alpha (significance level) parameter in percents
     :return: Mean prediction interval width metric

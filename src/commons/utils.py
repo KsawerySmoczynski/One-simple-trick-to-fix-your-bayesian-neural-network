@@ -36,3 +36,8 @@ def fit_N(x, p):
         optim.step()
 
     return out.cpu().detach().numpy()
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+def d(a):
+  return torch.Tensor([a]).to(device)
