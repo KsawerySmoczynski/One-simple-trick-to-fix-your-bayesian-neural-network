@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 from sklearn.metrics import mean_squared_error
 
 
@@ -35,6 +36,17 @@ def MPIW(y_pred: np.array, percentile: float = 50.0):
     mpiw = np.mean(y_u - y_l)
     return mpiw
 
+def accuracy (y_true: torch.Tensor, y_pred: torch.Tensor):
+  """
+
+  :param y_true: tensor with true values. Dimensions: batch_size
+  :param y_pred: tensor with sample predictions from the model. Dimensions: batch_size x n_samples
+  :return: Accuracy of prediction (given as mode of sampled distribution)
+  """
+
+  mode_pred = torch.mode(y_pred, 0)[0]
+  accuracy = (mode_pred == y_true).sum() / y_true.shape[0]
+  return accuracy
 
 def _calculate_confidence_interval(percentile: float, y_pred: np.array):
     assert 0.0 < percentile < 100.0, "percentile must be between 0 and 100"

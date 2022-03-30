@@ -1,6 +1,6 @@
 from src.models.mle_regression import MLERegression
 from src.models.bnn_regression import BNNRegression
-from src.commons.pyro_training import train
+from src.commons.pyro_training import train_regression
 from src.commons.utils import d
 from sklearn import datasets
 
@@ -11,7 +11,7 @@ def run_training(x, y, metrics, activation, net_model, net_args, model_args, ste
   net = net_models[net_model](**net_args)
   model_args['model'] = net
   model = BNNRegression(**model_args)
-  train(x, y, model, steps, log_steps, metrics)
+  train_regression(x, y, model, steps, log_steps, metrics)
 
 
 # example
