@@ -7,7 +7,7 @@ from pyro.infer import Predictive
 import numpy as np
 from torch.utils.data import DataLoader
 
-from src.metrics.metrics import RMSE, PCIP, MPIW, accuracy
+from src.metrics.metrics import RMSE, PCIP, MPIW, accuracy, bin_metric
 from src.commons.utils import d, device
 
 def prepare_loaders (x, y, b_size):
@@ -57,14 +57,21 @@ def evaluate_classification(test_loader, model, guide, num_samples):
   pred = Predictive(model, guide=guide, num_samples=num_samples)
 
   accs = []
+  good_bins = np.zeros(11)
+  bad_bins = np.zeros(11)
   for X, y in test_loader:
     X = X.to(device)
     y = y.to(device)
     out = pred(X)
-    preds = out['obs']
+    preds = torch.transpose(out['obs'], 0, 1)
     accs.append(accuracy(y, preds).item())
+    g_bins, b_bins = bin_metric(np.array(y.cpu()), np.array(preds.cpu()))
+    good_bins += g_bins[1:]
+    bad_bins += b_bins[1:]
 
   print ("Accuracy: ", np.array(accs).mean())
+  print ("Bin cardinalites: ", good_bins + bad_bins)
+  print ("Bin accuracies: ", good_bins / (good_bins + bad_bins))
 
 def train_classification(train_loader, test_loader, model, epochs):  
   guide = AutoDiagonalNormal(model)
