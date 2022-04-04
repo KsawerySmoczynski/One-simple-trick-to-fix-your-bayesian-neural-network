@@ -1,6 +1,6 @@
 from typing import Any
 
-import torch as t
+import torch
 from pytorch_lightning import LightningModule
 from torch import nn
 from torchmetrics.functional import accuracy
@@ -14,7 +14,7 @@ class BayesianModule(LightningModule):
         self.criterion = nn.CrossEntropyLoss()
         self.lr = lr
 
-    def forward(self, x: t.Tensor) -> t.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.model(x)
 
     def training_step(self, batch, batch_idx):
@@ -40,8 +40,8 @@ class BayesianModule(LightningModule):
         self.log("test/accuracy", accuracy(y_hat, y), on_epoch=True)
 
     def configure_optimizers(self):
-        optim = t.optim.Adam(self.model.parameters(), lr=self.lr)
+        optim = torch.optim.Adam(self.model.parameters(), lr=self.lr)
         return {
             "optimizer": optim,
-            "lr_scheduler": {"scheduler": t.optim.lr_scheduler.StepLR(optim, 150, gamma=0.5), "monitor": "loss"},
+            "lr_scheduler": {"scheduler": torch.optim.lr_scheduler.StepLR(optim, 150, gamma=0.5), "monitor": "loss"},
         }

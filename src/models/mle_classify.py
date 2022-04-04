@@ -20,8 +20,8 @@ class MLEClassify(PyroModule):
         self.layer2 = nn.Linear(hidden_size, out_size)
 
     def forward(self, x):
-        x = x.view(x.shape[0], -1)
-        h = self.act(self.layer1(x))
-        logits = self.layer2(h)
-        probs = F.log_softmax(logits, dim=1)
+        x = x.view(x.shape[0], -1)     
+        h = self.act(self.layer1(x))            
+        logits = self.layer2(h)      
+        probs = F.log_softmax(logits, dim=1).squeeze()
         return probs

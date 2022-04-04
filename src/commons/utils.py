@@ -40,6 +40,5 @@ def fit_N(x, p):
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-
 def d(a):
     return torch.Tensor([a]).to(device)

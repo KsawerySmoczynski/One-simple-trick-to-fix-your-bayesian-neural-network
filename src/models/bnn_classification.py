@@ -26,8 +26,9 @@ class BNNClassification(PyroModule):
                     PyroSample(prior=dist.Normal(self.mean, self.std).expand(value.shape).to_event(value.dim())),
                 )
 
-    def forward(self, x, y=None):
-        logits = self.model(x)
-        with pyro.plate("data", x.shape[0]):
-            obs = pyro.sample("obs", dist.Categorical(logits=logits), obs=y)
-        return logits
+  def forward(self, x, y=None):
+      logits = self.model(x)
+      with pyro.plate("data", x.shape[0]):
+          obs = pyro.sample("obs", dist.Categorical(logits=logits), obs=y)
+      return logits
+  
