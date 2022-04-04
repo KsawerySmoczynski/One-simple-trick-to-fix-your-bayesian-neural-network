@@ -36,45 +36,52 @@ def MPIW(y_pred: np.array, percentile: float = 50.0):
     mpiw = np.mean(y_u - y_l)
     return mpiw
 
-def accuracy (y_true: torch.Tensor, y_pred: torch.Tensor):
-  """
 
-  :param y_true: tensor with true values. Dimensions: batch_size
-  :param y_pred: tensor with sample predictions from the model. Dimensions: batch_size x n_samples
-  :return: Accuracy of prediction (given as mode of sampled distribution)
-  """
+def accuracy(y_true: torch.Tensor, y_pred: torch.Tensor):
+    """
 
-  mode_pred = torch.mode(y_pred, 1)[0]
-  accuracy = (mode_pred == y_true).sum() / y_true.shape[0]
-  return accuracy
+    :param y_true: tensor with true values. Dimensions: batch_size
+    :param y_pred: tensor with sample predictions from the model. Dimensions: batch_size x n_samples
+    :return: Accuracy of prediction (given as mode of sampled distribution)
+    """
 
-def bin_metric (y_true, y_pred):
-  """
+    mode_pred = torch.mode(y_pred, 1)[0]
+    accuracy = (mode_pred == y_true).sum() / y_true.shape[0]
+    return accuracy
 
-  :param y_true: tensor with true values. Dimensions: batch_size
-  :param y_pred: tensor with sample predictions from the model. Dimensions: batch_size x n_samples
-  :return: For percantages in intervals [0,5], [5,15], [15,25], ..., [85,95], [95, 100] 
-          good_prob_bins and bad_prob_bins are model's good and bad predictions given confidence in that interval
-  """
 
-  n_samples = y_pred.shape[1]
+def bin_metric(y_true, y_pred):
+    """
 
-  class_probs =  np.apply_along_axis(lambda x: np.bincount(x, minlength=10), axis=1, arr=y_pred) / n_samples
-  class_bins = np.rint(class_probs * 10) + 1
-  
-  one_hot = np.zeros((y_true.shape[0], 10)) 
-  one_hot[np.arange(y_true.shape[0]), y_true] = 1
+    :param y_true: tensor with true values. Dimensions: batch_size
+    :param y_pred: tensor with sample predictions from the model. Dimensions: batch_size x n_samples
+    :return: For percantages in intervals [0,5], [5,15], [15,25], ..., [85,95], [95, 100]
+            good_prob_bins and bad_prob_bins are model's good and bad predictions given confidence in that interval
+    """
 
-  good_mask = one_hot
-  bad_mask = 1 - good_mask
+    n_samples = y_pred.shape[1]
 
-  good_bins = class_bins * good_mask
-  bad_bins = class_bins * bad_mask
+    class_probs = np.apply_along_axis(lambda x: np.bincount(x, minlength=10), axis=1, arr=y_pred) / n_samples
+    class_bins = np.rint(class_probs * 10) + 1
 
-  good_prob_bins = np.apply_along_axis(lambda x: np.bincount(x, minlength=12), axis=1, arr=good_bins.astype(int)).sum(axis=0)
-  bad_prob_bins = np.apply_along_axis(lambda x: np.bincount(x, minlength=12), axis=1, arr=bad_bins.astype(int)).sum(axis=0)
+    one_hot = np.zeros((y_true.shape[0], 10))
+    one_hot[np.arange(y_true.shape[0]), y_true] = 1
 
-  return good_prob_bins, bad_prob_bins
+    good_mask = one_hot
+    bad_mask = 1 - good_mask
+
+    good_bins = class_bins * good_mask
+    bad_bins = class_bins * bad_mask
+
+    good_prob_bins = np.apply_along_axis(lambda x: np.bincount(x, minlength=12), axis=1, arr=good_bins.astype(int)).sum(
+        axis=0
+    )
+    bad_prob_bins = np.apply_along_axis(lambda x: np.bincount(x, minlength=12), axis=1, arr=bad_bins.astype(int)).sum(
+        axis=0
+    )
+
+    return good_prob_bins, bad_prob_bins
+
 
 def _calculate_confidence_interval(percentile: float, y_pred: np.array):
     assert 0.0 < percentile < 100.0, "percentile must be between 0 and 100"
