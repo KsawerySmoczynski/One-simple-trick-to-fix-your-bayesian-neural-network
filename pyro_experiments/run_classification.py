@@ -1,12 +1,12 @@
-from torchvision.datasets import MNIST
 from torchvision import transforms as T
+from torchvision.datasets import MNIST
 
-from src.models.mle_classify import MLEClassify
-from src.models.deep_mle_classify import DeepMLEClassify
-from src.models.conv_classify import ConvClassify
-from src.models.bnn_classification import BNNClassification
-from src.commons.pyro_training import train_classification, prepare_loaders
+from models.bnn import BNNClassification
+from src.commons.pyro_training import prepare_loaders, train_classification
 from src.commons.utils import d
+from src.models.conv_classify import ConvClassify
+from src.models.deep_mle_classify import DeepMLEClassify
+from src.models.mle_classify import MLEClassify
 
 classify_models = {"mle_classify": MLEClassify, "deep_mle_classify": DeepMLEClassify, "conv_classify": ConvClassify}
 

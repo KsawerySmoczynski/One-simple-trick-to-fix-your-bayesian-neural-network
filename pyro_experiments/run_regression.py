@@ -1,8 +1,9 @@
-from src.models.mle_regression import MLERegression
-from src.models.bnn_regression import BNNRegression
+from sklearn import datasets
+
+from models.regression.mle_regression import MLERegression
 from src.commons.pyro_training import train_regression
 from src.commons.utils import d
-from sklearn import datasets
+from src.models.bnn_regression import BNNRegression
 
 net_models = {"mle_regression": MLERegression}
 

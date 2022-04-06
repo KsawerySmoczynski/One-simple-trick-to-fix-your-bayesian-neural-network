@@ -7,10 +7,10 @@ from src.models.module import Module
 
 
 class FNN(Module):
-    def __init__(self, in_channels: int, n_classes: int):
-        super().__init__()
+    def __init__(self, activation, in_channels: int, n_classes: int):
+        super().__init__(activation)
         self.linear = nn.Sequential(
-            nn.Linear(in_channels * 28 ** 2, 128), nn.Sigmoid(), nn.Dropout(0.5), nn.Linear(128, n_classes)
+            nn.Linear(in_channels * 28**2, 128), self.activation, nn.Dropout(0.5), nn.Linear(128, n_classes)
         )
         self.print_parameter_size()
 
