@@ -2,7 +2,7 @@ from torch import nn
 
 
 class Module(nn.Module):
-    def __init__(self, activation, *args, **kwargs):
+    def __init__(self, activation: nn.Module, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.activation = activation
 

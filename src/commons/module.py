@@ -1,4 +1,5 @@
-from typing import Any
+from functools import partial
+from typing import Any, Union
 
 import pyro
 import torch
@@ -6,14 +7,16 @@ from pyro.infer import SVI, Predictive
 from pytorch_lightning import LightningModule
 from torch import nn
 
+from src.commons.io import initialize_object
+
 
 class BayesianModule(LightningModule):
-    def __init__(self, bayesian, model, optimizer, criterion, n_samples=100, *args, **kwargs) -> None:
+    def __init__(self, bayesian: bool, model: nn.Module, optimizer, criterion, n_samples=100, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.bayesian = bayesian
         self.model = model
         self.optimizer = optimizer
-        self.criterion = criterion
+        self.criterion = initialize_object(criterion["class_path"], criterion["init_args"])
         self.n_samples = n_samples
         self._configure_methods()
         #
@@ -22,20 +25,20 @@ class BayesianModule(LightningModule):
         self.svi = SVI(self.model, self.model.guide, self.optimizer, loss=self.criterion) if bayesian else None
 
     def training_step(self, batch, batch_idx):
-        return self.step("train", batch)
+        return self.train_val_test_step("train", batch)
 
     def validation_step(self, batch, batch_idx):
-        return self.step("val", batch)
+        return self.train_val_test_step("val", batch)
 
     def test_step(self, batch, batch_idx):
-        return self.step("test", batch)
+        return self.train_val_test_step("test", batch)
 
     def training_epoch_end(self, outputs):
         if self.bayesian:
             self.predictive = Predictive(self.model, guide=self.model.guide, num_samples=self.n_samples)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.frwrd(x)
+    def forward(self, X: torch.Tensor) -> torch.Tensor:
+        return self.frwrd(X)
 
     def backward(self, loss, optimizer, optimizer_idx, *args, **kwargs) -> None:
         self.bckwrd(loss, optimizer, optimizer_idx, *args, **kwargs)
@@ -44,13 +47,13 @@ class BayesianModule(LightningModule):
         if self.bayesian:
             pyro.clear_param_store()
         else:
-            self.optimizer = self.optimizer(self.model.parameters())
+            self.optimizer["init_args"].update({"params": self.model.parameters()})
+        self.optimizer = initialize_object(self.optimizer["class_path"], self.optimizer["init_args"])
         return self.optimizer
 
-    def optimizer_step(
-        self, epoch, batch_idx, optimizer, optimizer_idx, optimizer_closure, on_tpu, using_native_amp, using_lbfgs
-    ):
-        self.optim_step()
+    # TODO and add zero grad
+    # def optimizer_step(self, *args, **kwargs):
+    #     self.optim_step(*args, **kwargs)
 
     def _step(self, stage: str, batch):
         X, y = batch
@@ -88,8 +91,8 @@ class BayesianModule(LightningModule):
         pass
 
     def _configure_methods(self):
-        self.step = self._bayesian_step if self.bayesian else self._step
-        self.frwrd = self._bayesian_forward if self.bayesian else self.super.forward
-        self.bckwrd = self._bayesian_backward if self.bayesian else self.super.backward
-        self.optim_step = self._bayesian_optim_step if self.bayesian else self.super.optimizer_step
-        self.optim_zero_grad = self._bayesian_optim_zero_grad if self.bayesian else self.super.optimizer_zero_grad
+        self.train_val_test_step = self._bayesian_step if self.bayesian else self._step
+        self.frwrd = self._bayesian_forward if self.bayesian else self.model.forward
+        self.bckwrd = self._bayesian_backward if self.bayesian else super().backward
+        self.optim_step = self._bayesian_optim_step if self.bayesian else super().optimizer_step
+        self.optim_zero_grad = self._bayesian_optim_zero_grad if self.bayesian else super().optimizer_zero_grad

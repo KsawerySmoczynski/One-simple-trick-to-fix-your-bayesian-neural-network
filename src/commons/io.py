@@ -1,18 +1,27 @@
 import importlib
+from dataclasses import replace
+from pathlib import Path
 
 import torch as t
 import yaml
 from torch import nn
 
 
+def initialize_object(class_path: str, init_args: dict):
+    parts = class_path.split(".")
+    package = None
+    module, net_class = ".".join(parts[:-1]), parts[-1]
+    if parts[0] != "src":
+        package = class_path.split(".")[0]
+        # module = ".".join(module.split(".")[1:])
+    module = importlib.import_module(module, package)
+    cls = getattr(module, net_class)
+    return cls(**init_args)
+
+
 def parse_net_class(model_config_path: str):
     net_config = yaml.load(open(model_config_path, "r"), Loader=yaml.FullLoader)["model"]["model"]
-    net_class, module = net_config["class_path"].split(".")[-1], ".".join(net_config["class_path"].split(".")[:-1])
-    module = importlib.import_module(module)
-    net_class = getattr(module, net_class)
-    net = net_class(**net_config["init_args"])
-
-    return net
+    return initialize_object(net_config["class_path"], net_config["init_args"])
 
 
 def load_net(net: nn.Module, model_path: str, device: str, lightning_model: bool = True) -> nn.Module:
