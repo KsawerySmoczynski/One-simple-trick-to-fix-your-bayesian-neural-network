@@ -1,6 +1,7 @@
 import importlib
 from dataclasses import replace
 from pathlib import Path
+from typing import Dict, List, Tuple
 
 import torch as t
 import yaml
@@ -10,13 +11,16 @@ from torch import nn
 def initialize_object(class_path: str, init_args: dict):
     parts = class_path.split(".")
     package = None
-    module, net_class = ".".join(parts[:-1]), parts[-1]
+    module, cls = ".".join(parts[:-1]), parts[-1]
     if parts[0] != "src":
         package = class_path.split(".")[0]
         # module = ".".join(module.split(".")[1:])
     module = importlib.import_module(module, package)
-    cls = getattr(module, net_class)
-    return cls(**init_args)
+    cls = getattr(module, cls)
+    if isinstance(init_args, (List, Tuple)):
+        return cls(*init_args)
+    elif isinstance(init_args, Dict):
+        return cls(**init_args)
 
 
 def parse_net_class(model_config_path: str):

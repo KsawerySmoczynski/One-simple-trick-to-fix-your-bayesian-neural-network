@@ -7,22 +7,22 @@ from pyro.infer import SVI, Predictive
 from pytorch_lightning import LightningModule
 from torch import nn
 
+from models.bnn import bayesian_wrap
 from src.commons.io import initialize_object
 
 
 class BayesianModule(LightningModule):
-    def __init__(self, bayesian: bool, model: nn.Module, optimizer, criterion, n_samples=100, *args, **kwargs) -> None:
+    def __init__(
+        self, bayesian: bool, model: nn.Module, optimizer, criterion, mean=0, std=1, n_samples=100, *args, **kwargs
+    ) -> None:
         super().__init__(*args, **kwargs)
         self.bayesian = bayesian
-        self.model = model
+        self.model = bayesian_wrap(model, mean, std) if bayesian else model
         self.optimizer = optimizer
         self.criterion = initialize_object(criterion["class_path"], criterion["init_args"])
         self.n_samples = n_samples
         self._configure_methods()
-        #
-        if bayesian:
-            self.model.setup()  # pass device here should be available from trainer already.
-        self.svi = SVI(self.model, self.model.guide, self.optimizer, loss=self.criterion) if bayesian else None
+        self.svi = None
 
     def training_step(self, batch, batch_idx):
         return self.train_val_test_step("train", batch)
@@ -45,15 +45,19 @@ class BayesianModule(LightningModule):
 
     def configure_optimizers(self):
         if self.bayesian:
+            self.model.setup(self._device)  # pass device here should be available from trainer already.
             pyro.clear_param_store()
         else:
             self.optimizer["init_args"].update({"params": self.model.parameters()})
         self.optimizer = initialize_object(self.optimizer["class_path"], self.optimizer["init_args"])
-        return self.optimizer
+        if self.bayesian:
+            self.svi = SVI(self.model, self.model.guide, self.optimizer, loss=self.criterion)
+            # return torch.optim.SGD([torch.tensor(1., requires_grad=True)], lr=0.1)
+        return None
 
     # TODO and add zero grad
-    # def optimizer_step(self, *args, **kwargs):
-    #     self.optim_step(*args, **kwargs)
+    def optimizer_step(self, *args, **kwargs):
+        self.optim_step(*args, **kwargs)
 
     def _step(self, stage: str, batch):
         X, y = batch
@@ -84,7 +88,11 @@ class BayesianModule(LightningModule):
     def _bayesian_backward(self, loss, optimizer, optimizer_idx, *args, **kwargs):
         pass
 
-    def _bayesian_optim_step(self, *args, **kwargs):
+    def _bayesian_optim_step(
+        self, epoch, batch_idx, optimizer, optimizer_idx, optimizer_closure, on_tpu, *args, **kwargs
+    ):
+        optimizer_closure()
+        print("siema chyba nic nie będzie z tego Lightninga")
         pass
 
     def _bayesian_optim_zero_grad(self, *args, **kwargs):

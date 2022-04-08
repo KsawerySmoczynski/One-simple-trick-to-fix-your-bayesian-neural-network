@@ -1,0 +1,23 @@
+model:
+  bayesian: true
+  model:
+    class_path: src.models.classification.LeNet
+    init_args:
+      in_channels: 1
+      n_classes: 10
+      kernels_per_layer: 2
+      activation:
+        class_path: torch.nn.ReLU
+  optimizer:
+    class_path: pyro.optim.Adam
+    init_args:
+      - {lr: 0.001, betas: [0.9, 0.999]}
+  criterion:
+    class_path: pyro.infer.Trace_ELBO
+    init_args: {}
+data:
+  dataset: "MNIST"
+  dataset_path: "datasets"
+  num_workers: 16
+  train_batch_size: 256
+  valtest_batch_size: 256
