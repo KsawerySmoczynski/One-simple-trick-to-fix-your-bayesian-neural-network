@@ -28,7 +28,8 @@ pytest = "^6.2.4"
 pytest-mock = "^3.6.1"
 pytest-cov = "^2.12.1"
 coverage = {extras = ["toml"], version = "^5.5.0"}
-black = "21.10b0"  # Strictly pinned because of .pre-commit-config.yaml compatibility
+black = "^21.10b0"  # Strictly pinned because of .pre-commit-config.yaml compatibility
+click = "==8.0.2"
 pre-commit = "^2.13.0"
 pylint = "^2.9.3"
 isort = "5.9.1"  # Strictly pinned because of .pre-commit-config.yaml compatibility

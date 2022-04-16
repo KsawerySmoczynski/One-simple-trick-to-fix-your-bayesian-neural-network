@@ -15,7 +15,7 @@ from torchmetrics import Accuracy
 from torchvision import transforms as T
 from torchvision.datasets import MNIST
 
-from src.models import LeNet
+from src.models.classification import LeNet
 
 DEVICE = torch.device("cuda:0")
 train_dataset = MNIST("datasets", True, T.Compose([T.ToTensor(), T.Normalize((0.1307,), (0.3081,))]), download=True)

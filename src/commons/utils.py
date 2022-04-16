@@ -1,6 +1,14 @@
+import random
+from collections.abc import MutableMapping
+from functools import reduce
+from typing import Dict, List
+
+import numpy as np
 import torch
 import torch.nn.functional as F
+import yaml
 from torch.nn.utils import parameters_to_vector, vector_to_parameters
+from torchvision import transforms
 
 from src.models.normal import N
 
@@ -38,7 +46,62 @@ def fit_N(x, p):
     return out.cpu().detach().numpy()
 
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+def seed_everything(seed: int) -> int:
+    max_seed_value = np.iinfo(np.uint32).max
+    min_seed_value = np.iinfo(np.uint32).min
 
-def d(a):
-    return torch.Tensor([a]).to(device)
+    if not (min_seed_value <= seed <= max_seed_value):
+        print(f"{seed} is not in bounds, numpy accepts from {min_seed_value} to {max_seed_value}")
+        seed = np.randint(min_seed_value, max_seed_value)
+
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+
+    return seed
+
+
+def _rec_dict_merge(d1: Dict, d2: Dict) -> Dict:
+    for k, v in d1.items():
+        if k in d2:
+            if all(isinstance(e, MutableMapping) for e in (v, d2[k])):
+                d2[k] = _rec_dict_merge(v, d2[k])
+    d3 = d1.copy()
+    d3.update(d2)
+    return d3
+
+
+def get_configs(config_paths: List[str]) -> Dict:
+    if isinstance(config_paths, str):
+        config_paths = [config_paths]
+    configs = map(lambda path: yaml.safe_load(open(path, "r")), config_paths)
+    config = reduce(_rec_dict_merge, configs)
+
+    model = config["model"]
+    data = config["data"]
+    seed = config["seed_everything"]
+    training = config["trainer"]
+    training["seed"] = seed
+    return model, data, training
+
+
+def get_transforms(objective: str):
+    # TODO extend to support 3channel transforms based on dataset name
+    if objective == "classification":
+        normalization = ((0.1307,), (0.3081,))
+        train_transform = transforms.Compose(
+            [
+                transforms.ToTensor(),
+                transforms.Normalize(*normalization),
+                transforms.RandomAffine(degrees=(0, 70), translate=(0.1, 0.3), scale=(0.8, 1.2)),
+            ]
+        )
+        test_transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(*normalization)])
+    elif objective == "regression":
+        print("Regression transforms not implemented, applying identity")
+        # TODO add normalization transforms
+        train_transform = lambda x: x
+        test_transform = lambda x: x
+
+    return train_transform, test_transform

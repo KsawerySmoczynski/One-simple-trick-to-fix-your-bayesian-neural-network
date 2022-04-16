@@ -1,4 +1,4 @@
-import torch as t
+import torch
 from torch import nn
 
 
@@ -21,6 +21,6 @@ class SeparableConv(nn.Module):
         )
         self.pointwise_conv = nn.Conv2d(in_channels * kernels_per_layer, out_channels, kernel_size=1)
 
-    def forward(self, x: t.Tensor) -> t.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.depthwise_conv(x)
         return self.pointwise_conv(x)
