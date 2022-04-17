@@ -13,6 +13,8 @@ def get_dataloaders(train_dataset, test_dataset, train_batch_size: int, num_work
 def get_datasets(dataset: str, dataset_path: str, train_transform, test_transform, *args, **kwargs):
     if dataset == "MNIST":
         train_dataset = MNIST(dataset_path, train=True, download=False, transform=train_transform)
+        train_dataset.targets = train_dataset.targets[:1_000]
+        train_dataset.data = train_dataset.data[:1_000]
         test_dataset = MNIST(dataset_path, train=False, download=False, transform=test_transform)
     elif dataset == "FashionMNIST":
         train_dataset = FashionMNIST(dataset_path, train=True, download=False, transform=train_transform)

@@ -3,13 +3,14 @@ from typing import Tuple
 import numpy as np
 import pyro
 import torch
+
+torch.set_printoptions(precision=10)
 from pyro.infer import SVI, Predictive
 from pyro.nn.module import PyroModule
 from torch import nn
 from torch.utils.data import DataLoader
 from torchmetrics import Metric
 
-from src.metrics.metrics import MPIW, PCIP, RMSE, accuracy, bin_metric
 from src.models import CLASSIFICATION_MODELS, REGRESSION_MODELS
 from src.models.bnn import BNNClassification, BNNRegression
 
@@ -56,7 +57,7 @@ def train(
             y = y.to(device)
             loss += svi.step(X, y)
         print("Loss:", loss / len(train_loader.dataset))
-        predictive = Predictive(model, guide=guide, num_samples=num_samples)
+        predictive = Predictive(model, guide=guide, num_samples=num_samples, return_sites=("obs",))
         print(f"Start eval for epoch: {e}")
         evaluation(predictive, test_loader, metrics, device)
     return model, guide
@@ -66,6 +67,10 @@ def evaluation(predictive, dataloader, metrics, device):
     for X, y in dataloader:
         X = X.to(device)
         y = y.to(device)
-        out = predictive(X)
+        out = predictive(X)["obs"].T
         for metric in metrics:
-            metric(out, y)
+            metric.update(out, y)
+    # TODO report to tensorboard
+    for metric in metrics:
+        print(f"{metric.__class__.__name__} - {metric.compute():.4f}")
+        metric.reset()

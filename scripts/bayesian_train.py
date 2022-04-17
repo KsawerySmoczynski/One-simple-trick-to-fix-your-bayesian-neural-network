@@ -10,7 +10,7 @@ from src.commons.pyro_training import get_objective, to_bayesian_model, train
 from src.commons.utils import get_configs, get_transforms, seed_everything
 
 
-def main(model_config, data_config, training_config):
+def main(model_config, data_config, metrics_config, training_config):
     device = torch.device("cuda") if (training_config["gpus"] != 0) else torch.device("cpu")
     epochs = training_config["max_epochs"]
     model_config["model"] = initialize_object(model_config["model"])
@@ -27,8 +27,10 @@ def main(model_config, data_config, training_config):
 
     svi = SVI(model, model.guide, optimizer, loss=criterion)
 
-    metrics = []
-    train(model, model.guide, train_loader, test_loader, svi, epochs, training_config["num_samples"], metrics, device)
+    eval_metrics = [initialize_object(metric) for metric in metrics_config]
+    train(
+        model, model.guide, train_loader, test_loader, svi, epochs, training_config["num_samples"], eval_metrics, device
+    )
 
 
 if __name__ == "__main__":
@@ -40,7 +42,7 @@ if __name__ == "__main__":
     parser.add_argument("--workdir", type=str, default=Path("logs"), help="Path to store training artifacts")
 
     args = parser.parse_args()
-    model_config, data_config, training_config = get_configs(
+    model_config, data_config, metrics_config, training_config = get_configs(
         args.config
     )  # TODO Add overriding feature of config entries with cmdline arguments
 
@@ -50,4 +52,4 @@ if __name__ == "__main__":
     seed_everything(training_config["seed"])
 
     # DEF LOGGER
-    main(model_config, data_config, training_config)
+    main(model_config, data_config, metrics_config, training_config)

@@ -78,12 +78,20 @@ def get_configs(config_paths: List[str]) -> Dict:
     configs = map(lambda path: yaml.safe_load(open(path, "r")), config_paths)
     config = reduce(_rec_dict_merge, configs)
 
-    model = config["model"]
-    data = config["data"]
+    # TODO change to proper handling with defaults and interpretable errors etc
+    assert "model" in config
+    assert "data" in config
+    assert "seed_everything" in config
+    assert "metrics" in config
+    assert "trainer" in config
+
+    model_config = config["model"]
+    data_config = config["data"]
     seed = config["seed_everything"]
-    training = config["trainer"]
-    training["seed"] = seed
-    return model, data, training
+    metrics_config = config["metrics"]
+    training_config = config["trainer"]
+    training_config["seed"] = seed
+    return model_config, data_config, metrics_config, training_config
 
 
 def get_transforms(objective: str):

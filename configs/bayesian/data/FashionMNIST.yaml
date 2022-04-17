@@ -1,0 +1,6 @@
+data:
+  dataset: "FashionMNIST"
+  dataset_path: "datasets"
+  num_workers: 16
+  train_batch_size: 256
+  val_batch_size: 256

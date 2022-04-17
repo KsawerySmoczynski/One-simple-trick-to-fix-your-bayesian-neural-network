@@ -15,9 +15,3 @@ model:
       - {lr: 0.001, betas: [0.9, 0.999]}
   criterion:
     class_path: pyro.infer.Trace_ELBO
-data:
-  dataset: "MNIST"
-  dataset_path: "datasets"
-  num_workers: 16
-  train_batch_size: 256
-  val_batch_size: 256
