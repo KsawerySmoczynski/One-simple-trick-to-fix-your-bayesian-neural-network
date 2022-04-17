@@ -1,11 +1,12 @@
 from argparse import ArgumentParser
+from datetime import datetime
 from pathlib import Path
 
 import torch
 from pyro.infer import SVI
 
 from src.commons.data import get_dataloaders, get_datasets
-from src.commons.io import initialize_object
+from src.commons.io import initialize_object, load_config, save_config
 from src.commons.pyro_training import get_objective, to_bayesian_model, train
 from src.commons.utils import get_configs, get_transforms, seed_everything
 
@@ -39,12 +40,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "--num-samples", type=int, default=100, help="How many samples should pyro use during prediciton phase"
     )  # TO be moved to configs
-    parser.add_argument("--workdir", type=str, default=Path("logs"), help="Path to store training artifacts")
+    parser.add_argument("--workdir", type=Path, default=Path("logs"), help="Path to store training artifacts")
 
     args = parser.parse_args()
+    config = load_config(args.config)
     model_config, data_config, metrics_config, training_config = get_configs(
-        args.config
+        config
     )  # TODO Add overriding feature of config entries with cmdline arguments
+    save_config(config, args.workdir / datetime.now().strftime("%Y%m%d-%H:%M") / "config.yaml")
 
     # Will be moved
     training_config["num_samples"] = args.num_samples

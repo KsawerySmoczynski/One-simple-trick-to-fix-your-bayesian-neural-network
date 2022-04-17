@@ -43,8 +43,6 @@ class ExpectedCalibrationError(ClassificationReductionMixin, Metric):
             (conf.double() - EPS) * self.num_bins
         ).int()  # Cast for double due to numerical rounding issues look here: https://stackoverflow.com/questions/63818676/what-is-the-machine-precision-in-pytorch-and-when-should-one-use-doubles
         bin_cardinalities = torch.bincount(bins, minlength=self.num_bins)
-        if bin_cardinalities.shape[0] != 10:
-            print("siema")
         TPs = (pred_class == target).int()
         bin_sum_acc = torch.bincount(bins, weights=TPs, minlength=self.num_bins)
         bin_sum_conf = torch.bincount(bins, weights=conf, minlength=self.num_bins)

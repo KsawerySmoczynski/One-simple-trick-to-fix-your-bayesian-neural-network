@@ -72,12 +72,7 @@ def _rec_dict_merge(d1: Dict, d2: Dict) -> Dict:
     return d3
 
 
-def get_configs(config_paths: List[str]) -> Dict:
-    if isinstance(config_paths, str):
-        config_paths = [config_paths]
-    configs = map(lambda path: yaml.safe_load(open(path, "r")), config_paths)
-    config = reduce(_rec_dict_merge, configs)
-
+def get_configs(config: Dict) -> Dict:
     # TODO change to proper handling with defaults and interpretable errors etc
     assert "model" in config
     assert "data" in config
