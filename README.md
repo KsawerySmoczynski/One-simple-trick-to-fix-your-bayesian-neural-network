@@ -1,12 +1,36 @@
 # Experiments repo
 
 ## Experiments
-### To run experiments
+
+### To run bayesian training
+
+```bash
+python scripts/bayesian_train.py --config [list of paths to configs to be merged, rightmost will override values of previous ones]
+```
+
+Example:
+```bash
+python scripts/bayesian_train.py --config configs/base_config.yaml configs/bayesian/models/LeNet.yaml \\
+                                          configs/bayesian/data/MNIST.yaml configs/bayesian/metrics/classification.yaml
+```
+
+Basic setup requires:
+- base training config (ex. configs/base_config.yaml)
+- model config (ex. configs/bayesian/models/LeNet.yaml)
+- data config (ex. configs/bayesian/data/MNIST.yaml)
+- metrics config (ex. configs/bayesian/metrics/classification.yaml)
+
+In order to add new metric look at reduction mixin classes and implementation of already working metrics.
+In order to add new dataset preferably implement torch Dataset class and instantiate it via config.
+
+### To run normal training experiments
 
 ```bash
 python scripts/train.py --config configs/00_basic_config.yaml
 ```
+
 In order to run full suite of experiments run:
+
 ```bash
 bash scripts/experiment.sh
 ```
@@ -21,7 +45,7 @@ bash scripts/experiment.sh
 ## Setup
 
 1. Install [pyenv](https://github.com/pyenv/pyenv) on your machine if you didn't do it already.
-```
+
 2. Install latest Python 3.8 if you don't have it already:
 ```bash
 pyenv install 3.8.11
