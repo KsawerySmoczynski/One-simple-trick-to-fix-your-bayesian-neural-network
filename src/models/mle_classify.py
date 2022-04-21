@@ -1,6 +1,7 @@
 import torch.nn.functional as F
 from pyro.nn import PyroModule
 from torch import nn
+from src.commons.utils import device
 
 
 class MLEClassify(PyroModule):
@@ -23,5 +24,5 @@ class MLEClassify(PyroModule):
         x = x.view(x.shape[0], -1)
         h = self.act(self.layer1(x))
         logits = self.layer2(h)
-        probs = F.log_softmax(logits, dim=1)
-        return probs
+        # probs = F.log_softmax(logits, dim=1)
+        return logits.squeeze()

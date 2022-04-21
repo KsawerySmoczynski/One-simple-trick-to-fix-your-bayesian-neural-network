@@ -106,3 +106,5 @@ def train_classification(train_loader, test_loader, model, epochs):
 
         print("Loss:", loss / len(train_loader.dataset))
         evaluate_classification(test_loader, model, guide, 100)
+
+    return model, guide

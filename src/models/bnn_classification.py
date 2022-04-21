@@ -4,6 +4,8 @@ import torch
 from pyro.nn import PyroModule
 from pyro.nn.module import to_pyro_module_, PyroSample
 from torch import nn
+import torch.nn.functional as F
+from copy import deepcopy
 
 from src.commons.utils import device
 
@@ -12,6 +14,7 @@ class BNNClassification(PyroModule):
     def __init__(self, model: nn.Module, mean: torch.Tensor, std: torch.Tensor):
         super().__init__()
         self.model = model
+        self.net = deepcopy(model)
         self.to(device)
         self.mean = mean.to(device)
         self.std = std.to(device)
@@ -30,4 +33,4 @@ class BNNClassification(PyroModule):
         logits = self.model(x)
         with pyro.plate("data", x.shape[0]):
             obs = pyro.sample("obs", dist.Categorical(logits=logits), obs=y)
-        return logits
+        return F.softmax(logits, dim=1)
