@@ -72,12 +72,7 @@ def _rec_dict_merge(d1: Dict, d2: Dict) -> Dict:
     return d3
 
 
-def get_configs(config_paths: List[str]) -> Dict:
-    if isinstance(config_paths, str):
-        config_paths = [config_paths]
-    configs = map(lambda path: yaml.safe_load(open(path, "r")), config_paths)
-    config = reduce(_rec_dict_merge, configs)
-
+def get_configs(config: Dict) -> Dict:
     # TODO change to proper handling with defaults and interpretable errors etc
     assert "model" in config
     assert "data" in config
@@ -95,6 +90,7 @@ def get_configs(config_paths: List[str]) -> Dict:
 
 
 def get_transforms(objective: str):
+    # Will be deprecated in favor of initializing from config
     # TODO extend to support 3channel transforms based on dataset name
     if objective == "classification":
         normalization = ((0.1307,), (0.3081,))
@@ -107,9 +103,9 @@ def get_transforms(objective: str):
         )
         test_transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(*normalization)])
     elif objective == "regression":
-        print("Regression transforms not implemented, applying identity")
+        print("Regression transforms not implemented")
         # TODO add normalization transforms
-        train_transform = lambda x: x
-        test_transform = lambda x: x
+        train_transform = None
+        test_transform = None
 
     return train_transform, test_transform

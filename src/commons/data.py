@@ -3,6 +3,8 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 from torchvision.datasets import MNIST, FashionMNIST
 
+from src.datasets.california import CaliforniaHousingDataset
+
 
 def get_dataloaders(train_dataset, test_dataset, train_batch_size: int, num_workers: int, *args, **kwargs):
     train_dataloader = DataLoader(train_dataset, train_batch_size, num_workers)
@@ -13,12 +15,13 @@ def get_dataloaders(train_dataset, test_dataset, train_batch_size: int, num_work
 def get_datasets(dataset: str, dataset_path: str, train_transform, test_transform, *args, **kwargs):
     if dataset == "MNIST":
         train_dataset = MNIST(dataset_path, train=True, download=False, transform=train_transform)
-        train_dataset.targets = train_dataset.targets[:1_000]
-        train_dataset.data = train_dataset.data[:1_000]
         test_dataset = MNIST(dataset_path, train=False, download=False, transform=test_transform)
     elif dataset == "FashionMNIST":
         train_dataset = FashionMNIST(dataset_path, train=True, download=False, transform=train_transform)
         test_dataset = FashionMNIST(dataset_path, train=False, download=False, transform=test_transform)
+    elif dataset == "CaliforniaHousingDataset":
+        train_dataset = CaliforniaHousingDataset(train=True)
+        test_dataset = CaliforniaHousingDataset(train=False)
     else:
         raise NotImplementedError(f"{dataset} is currently unsupported")
 
