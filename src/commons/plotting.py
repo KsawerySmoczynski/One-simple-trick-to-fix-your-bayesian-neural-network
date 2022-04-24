@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from src.commons.utils import fit_N
+from src.commons.utils import fit_N, fit_sigma
 
 
 def plot_1d(df, val, i, train_limit, save_path: str = None):
@@ -10,13 +10,22 @@ def plot_1d(df, val, i, train_limit, save_path: str = None):
     p = np.exp(logp - np.max(logp))
     plt.figure(figsize=(15, 5))
     ax = plt.subplot(1, 1, 1)
-    ax.plot(df[:, 0], p)
+    ax.plot(df[:, 0], p, c='b')
+    # p_N = fit_N(df[:, 0], p)
+    p_N = fit_sigma(df[:, 0], p)
+    ax.plot(df[:, 0], p_N, alpha=0.7, c='y')
+    ax.plot(df[:, 0], good, alpha=0.7, c='g')
     ax.axvline(x=val, c="r")
-    p_N = fit_N(df[:, 0], p)
-    ax.plot(df[:, 0], p_N, alpha=0.7)
-    ax.plot(df[:, 0], good, alpha=0.7)
     plt.ylim(0.0, 1.05)
+    plt.legend(["likelihood", "normal fitted", "accuracy", "parameter"])
     plt.title(f"i:{i}, val: {val}")
+    # print('likelihood:')
+    # print(p)
+    # print('fitted normal:')
+    # print(p_N)
+    # print('accuracy')
+    # print(good)
+    # print(save_path)
     if save_path:
         plt.savefig(save_path)
     else:

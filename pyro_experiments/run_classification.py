@@ -39,7 +39,7 @@ model, guide = run_training(
     net_model="mle_classify",
     net_args=net_args,
     model_args=model_args,
-    epochs=2,
+    epochs=40,
     b_size=512,
 )
 
@@ -63,3 +63,5 @@ for X, y in test_loader:
     ok += (y == torch.max(out, dim=1)[1]).sum()
 
 print((ok/ len(test_loader.dataset)).item())
+
+torch.save({'state_dict': net.net.state_dict()}, '../scripts/params/mle')

@@ -1,0 +1,1 @@
+python evaluate_weights_1d.py sav params/mle ../configs/MNIST/MLEClassify.yaml
