@@ -8,7 +8,7 @@ from pyro.infer import SVI
 from src.commons.data import get_dataloaders, get_datasets
 from src.commons.io import initialize_object, load_config, save_config
 from src.commons.pyro_training import get_objective, to_bayesian_model, train
-from src.commons.utils import get_configs, get_transforms, seed_everything
+from src.commons.utils import get_configs, get_metrics, get_transforms, seed_everything
 
 
 def main(model_config, data_config, metrics_config, training_config):
@@ -28,7 +28,8 @@ def main(model_config, data_config, metrics_config, training_config):
 
     svi = SVI(model, model.guide, optimizer, loss=criterion)
 
-    eval_metrics = [initialize_object(metric) for metric in metrics_config]
+    eval_metrics = get_metrics(metrics_config, device)
+
     train(
         model, model.guide, train_loader, test_loader, svi, epochs, training_config["num_samples"], eval_metrics, device
     )

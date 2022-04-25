@@ -1,3 +1,4 @@
+import importlib
 import random
 from collections.abc import MutableMapping
 from functools import reduce
@@ -62,6 +63,23 @@ def seed_everything(seed: int) -> int:
     return seed
 
 
+def initialize_object(object_dict: Dict):
+    if "init_args" in object_dict:
+        if isinstance(object_dict["init_args"], dict):
+            for k, v in object_dict["init_args"].items():
+                if isinstance(v, dict) and "class_path" in v:
+                    object_dict["init_args"][k] = initialize_object(v)
+
+    class_path = object_dict["class_path"]
+    init_args = object_dict["init_args"] if "init_args" in object_dict else {}
+    parts = class_path.split(".")
+    module, net_class = ".".join(parts[:-1]), parts[-1]
+    package = class_path.split(".")[0]
+    module = importlib.import_module(module, package)
+    cls = getattr(module, net_class)
+    return cls(**init_args) if isinstance(init_args, dict) else cls(*init_args)
+
+
 def _rec_dict_merge(d1: Dict, d2: Dict) -> Dict:
     for k, v in d1.items():
         if k in d2:
@@ -90,6 +108,7 @@ def get_configs(config: Dict) -> Dict:
 
 
 def get_transforms(objective: str):
+    # Will be deprecated in favor of initializing from config
     # TODO extend to support 3channel transforms based on dataset name
     if objective == "classification":
         normalization = ((0.1307,), (0.3081,))
@@ -102,9 +121,13 @@ def get_transforms(objective: str):
         )
         test_transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(*normalization)])
     elif objective == "regression":
-        print("Regression transforms not implemented, applying identity")
+        print("Regression transforms not implemented")
         # TODO add normalization transforms
-        train_transform = lambda x: x
-        test_transform = lambda x: x
+        train_transform = None
+        test_transform = None
 
     return train_transform, test_transform
+
+
+def get_metrics(metrics_config: List) -> List:
+    return [initialize_object(metric) for metric in metrics_config]
