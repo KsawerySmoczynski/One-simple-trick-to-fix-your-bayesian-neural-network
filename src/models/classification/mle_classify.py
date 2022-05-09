@@ -2,8 +2,10 @@ import torch.nn.functional as F
 from pyro.nn import PyroModule
 from torch import nn
 
+from src.models.module import Module
 
-class MLEClassify(PyroModule):
+
+class MLEClassify(Module):
     def __init__(self, activation, in_size, hidden_size, out_size):
         super().__init__(activation)
         self.layer1 = nn.Linear(in_size, hidden_size)
