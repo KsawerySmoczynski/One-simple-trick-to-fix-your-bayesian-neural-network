@@ -65,9 +65,8 @@ def train(
 
 def evaluation(predictive, dataloader, metrics, device):
     for X, y in dataloader:
-        X = X.to(device)
-        y = y.to(device)
-        out = predictive(X)["obs"].T
+        out = predictive(X.to(device))["obs"].T.cpu()
+
         for metric in metrics:
             metric.update(out, y)
     # TODO report to tensorboard

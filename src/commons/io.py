@@ -1,4 +1,3 @@
-import importlib
 from functools import reduce
 from pathlib import Path
 from typing import Dict, List
@@ -24,22 +23,6 @@ def load_config(config_paths: List[str]):
     config = reduce(_rec_dict_merge, configs)
     return config
 
-
-def initialize_object(object_dict: Dict):
-    if "init_args" in object_dict:
-        if isinstance(object_dict["init_args"], dict):
-            for k, v in object_dict["init_args"].items():
-                if isinstance(v, dict) and "class_path" in v:
-                    object_dict["init_args"][k] = initialize_object(v)
-
-    class_path = object_dict["class_path"]
-    init_args = object_dict["init_args"] if "init_args" in object_dict else {}
-    parts = class_path.split(".")
-    module, net_class = ".".join(parts[:-1]), parts[-1]
-    package = class_path.split(".")[0]
-    module = importlib.import_module(module, package)
-    cls = getattr(module, net_class)
-    return cls(**init_args) if isinstance(init_args, dict) else cls(*init_args)
 
 
 def parse_net_class(model_config_path: str):
