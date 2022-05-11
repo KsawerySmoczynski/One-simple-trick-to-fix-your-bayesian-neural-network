@@ -2,7 +2,6 @@ import torch as t
 import torch.nn.functional as F
 from torch import nn
 
-from src.models.layers import SeparableConv
 from src.models.module import Module
 
 
@@ -35,4 +34,4 @@ class LeNet(Module):
     def forward(self, x: t.Tensor) -> t.Tensor:
         x = self.conv(x)
         x = self.linear(x.view(x.shape[0], -1))
-        return x
+        return F.log_softmax(x, dim=1)

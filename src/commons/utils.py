@@ -1,15 +1,13 @@
 import importlib
 import random
 from collections.abc import MutableMapping
-from functools import reduce
-from typing import Dict, List
+from copy import deepcopy
+from typing import Dict, List, Tuple, Union
 
 import numpy as np
 import torch
 import torch.nn.functional as F
-import yaml
 from torch.nn.utils import parameters_to_vector, vector_to_parameters
-from torchvision import transforms
 
 from src.models.normal import N
 
@@ -107,27 +105,24 @@ def get_configs(config: Dict) -> Dict:
     return model_config, data_config, metrics_config, training_config
 
 
-def get_transforms(objective: str):
-    # Will be deprecated in favor of initializing from config
-    # TODO extend to support 3channel transforms based on dataset name
-    if objective == "classification":
-        normalization = ((0.1307,), (0.3081,))
-        train_transform = transforms.Compose(
-            [
-                transforms.ToTensor(),
-                transforms.Normalize(*normalization),
-                transforms.RandomAffine(degrees=(0, 70), translate=(0.1, 0.3), scale=(0.8, 1.2)),
-            ]
-        )
-        test_transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(*normalization)])
-    elif objective == "regression":
-        print("Regression transforms not implemented")
-        # TODO add normalization transforms
-        train_transform = None
-        test_transform = None
-
-    return train_transform, test_transform
-
-
 def get_metrics(metrics_config: List) -> List:
     return [initialize_object(metric) for metric in metrics_config]
+
+
+def traverse_config_and_initialize(iterable: Union[Dict, List, Tuple]):
+    inpt = deepcopy(iterable)
+    if isinstance(inpt, dict) and "class_path" in inpt:
+        if "init_args" in inpt:
+            inpt["init_args"] = traverse_config_and_initialize(inpt["init_args"])
+        return initialize_object(inpt)
+    elif isinstance(inpt, dict):
+        for k, v in inpt.items():
+            inpt[k] = traverse_config_and_initialize(v)
+        return inpt
+    elif isinstance(inpt, (list, tuple)):
+        items = []
+        for item in inpt:
+            items.append(traverse_config_and_initialize(item))
+        return items
+    else:
+        return inpt

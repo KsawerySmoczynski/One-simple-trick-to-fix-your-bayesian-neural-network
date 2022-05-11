@@ -2,33 +2,39 @@ from argparse import ArgumentParser
 from datetime import datetime
 from pathlib import Path
 
+import pyro
 import torch
 from pyro.infer import SVI
 
-from src.commons.data import get_dataloaders, get_datasets
-from src.commons.io import initialize_object, load_config, save_config
-from src.commons.pyro_training import get_objective, to_bayesian_model, train
-from src.commons.utils import get_configs, get_metrics, get_transforms, seed_everything
+from src.commons.data import get_dataloaders, get_datasets, get_transforms
+from src.commons.io import load_config, save_config
+from src.commons.pyro_training import to_bayesian_model, train
+from src.commons.utils import (
+    get_configs,
+    get_metrics,
+    seed_everything,
+    traverse_config_and_initialize,
+)
 
 
 def main(model_config, data_config, metrics_config, training_config):
+    pyro.clear_param_store()
     device = torch.device("cuda") if (training_config["gpus"] != 0) else torch.device("cpu")
     epochs = training_config["max_epochs"]
-    model_config["model"] = initialize_object(model_config["model"])
+    model_config["model"] = traverse_config_and_initialize(model_config["model"])
     model = to_bayesian_model(**model_config)
     model.setup(device)
-    optimizer = initialize_object(model_config["optimizer"])
-    criterion = initialize_object(model_config["criterion"])
+    optimizer = traverse_config_and_initialize(model_config["optimizer"])
+    criterion = traverse_config_and_initialize(model_config["criterion"])
 
-    objective = get_objective(model)
-    data_config["train_transform"], data_config["test_transform"] = get_transforms(objective)
+    data_config["train_transform"], data_config["test_transform"] = get_transforms(data_config)
 
-    train_dataset, test_dataset = get_datasets(**data_config)
-    train_loader, test_loader = get_dataloaders(train_dataset, test_dataset, **data_config)
+    data_config["train_dataset"], data_config["test_dataset"] = get_datasets(**data_config)
+    train_loader, test_loader = get_dataloaders(**data_config)
 
     svi = SVI(model, model.guide, optimizer, loss=criterion)
 
-    eval_metrics = get_metrics(metrics_config, device)
+    eval_metrics = get_metrics(metrics_config)
 
     train(
         model, model.guide, train_loader, test_loader, svi, epochs, training_config["num_samples"], eval_metrics, device

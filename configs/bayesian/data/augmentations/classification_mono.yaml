@@ -1,0 +1,24 @@
+data:
+  train_transform:
+    class_path: torchvision.transforms.Compose
+    init_args:
+      -
+        - class_path: torchvision.transforms.ToTensor
+        - class_path: torchvision.transforms.Normalize
+          init_args:
+            - [0.1307]
+            - [0.3081]
+#        - class_path: torchvision.transforms.RandomAffine
+#          init_args:
+#            degrees: [0, 70]
+#            translate: [0.1, 0.3]
+#            scale: [0.8, 1.2]
+  test_transform:
+    class_path: torchvision.transforms.Compose
+    init_args:
+      -
+        - class_path: torchvision.transforms.ToTensor
+        - class_path: torchvision.transforms.Normalize
+          init_args:
+            - [0.1307]
+            - [0.3081]

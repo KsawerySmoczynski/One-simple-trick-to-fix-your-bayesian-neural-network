@@ -1,6 +1,16 @@
 data:
-  dataset: "MNIST"
-  dataset_path: "datasets"
-  num_workers: 16
-  train_batch_size: 256
-  val_batch_size: 256
+  train_dataset:
+    class_path: torchvision.datasets.MNIST
+    init_args:
+      root: datasets
+      train: true
+      download: true
+  test_dataset:
+    class_path: torchvision.datasets.MNIST
+    init_args:
+      root: datasets
+      train: false
+      download: true
+  num_workers: 12
+  train_batch_size: 512
+  val_batch_size: 512
