@@ -5,7 +5,7 @@ from pytorch_lightning import LightningModule
 from torch import nn
 from torchmetrics.functional import accuracy
 
-from src.commons.io import initialize_object
+from src.commons.utils import initialize_object
 
 
 class TrainingModule(LightningModule):

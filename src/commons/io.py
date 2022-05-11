@@ -6,7 +6,7 @@ import torch
 import yaml
 from torch import nn
 
-from src.commons.utils import _rec_dict_merge
+from src.commons.utils import _rec_dict_merge, initialize_object
 
 
 def save_config(config: Dict, path: Path):
@@ -22,7 +22,6 @@ def load_config(config_paths: List[str]):
     configs = map(lambda path: yaml.safe_load(open(path, "r")), config_paths)
     config = reduce(_rec_dict_merge, configs)
     return config
-
 
 
 def parse_net_class(model_config_path: str):
