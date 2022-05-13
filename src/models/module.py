@@ -1,7 +1,8 @@
+from pyro.nn import PyroModule
 from torch import nn
 
 
-class Module(nn.Module):
+class Module(PyroModule):
     def __init__(self, activation: nn.Module, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.activation = activation

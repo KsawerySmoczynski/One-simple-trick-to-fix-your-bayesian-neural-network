@@ -19,6 +19,10 @@ class ReductionMixin(metaclass=abc.ABCMeta):
         """Load in the data set"""
         raise NotImplementedError
 
+    @abc.abstractmethod
+    def set_device(self, device):
+        raise NotImplementedError
+
 
 class ClassificationReductionMixin(ReductionMixin):
     def _get_reduction(self, input_type: str):
