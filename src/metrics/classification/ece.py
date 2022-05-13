@@ -29,7 +29,14 @@ class ExpectedCalibrationError(ClassificationReductionMixin, Metric):
         bin_cardinalities, bin_sum_acc, bin_sum_conf = self._get_bin_cardinalities_acc_conf(preds, target)
         self.bin_cardinalities += bin_cardinalities
         self.bin_sum_acc += bin_sum_acc
-        self.bin_sum_conf = bin_sum_conf
+        self.bin_sum_conf += bin_sum_conf
+
+    def set_device(self, device):
+        self.classes = self.classes.to(device)
+        self.bin_cardinalities = self.bin_cardinalities.to(device)
+        self.bin_sum_acc = self.bin_sum_acc.to(device)
+        self.bin_sum_conf = self.bin_sum_conf.to(device)
+        self.to(device)
 
     def compute(self):
         return (self.bin_sum_acc - self.bin_sum_conf).abs().sum() / self.bin_cardinalities.sum()

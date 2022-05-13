@@ -36,6 +36,9 @@ def main(model_config, data_config, metrics_config, training_config):
 
     eval_metrics = get_metrics(metrics_config)
 
+    for metric in eval_metrics:
+        metric.set_device(device)
+
     train(
         model, model.guide, train_loader, test_loader, svi, epochs, training_config["num_samples"], eval_metrics, device
     )

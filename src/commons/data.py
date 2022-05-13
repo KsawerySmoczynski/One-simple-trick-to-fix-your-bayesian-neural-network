@@ -14,12 +14,14 @@ def get_transforms(data_config: Dict) -> Tuple[Callable, Callable]:
     return train_transform, test_transform
 
 
-def get_dataloaders(train_dataset, test_dataset, train_batch_size: int, num_workers: int, *args, **kwargs):
+def get_dataloaders(
+    train_dataset, test_dataset, train_batch_size: int, test_batch_size: int, num_workers: int, *args, **kwargs
+):
     train_dataloader = DataLoader(
         train_dataset, train_batch_size, shuffle=True, num_workers=num_workers, pin_memory=True, persistent_workers=True
     )
     test_dataloader = DataLoader(
-        test_dataset, train_batch_size, num_workers=num_workers, pin_memory=True, persistent_workers=True
+        test_dataset, test_batch_size, num_workers=num_workers, pin_memory=True, persistent_workers=True
     )
     return train_dataloader, test_dataloader
 

@@ -36,6 +36,10 @@ class Accuracy(ClassificationReductionMixin, Acc):
         self.classes = torch.tensor(range(num_classes))
         self.reduction = self._get_reduction(input_type)
 
+    def set_device(self, device):
+        self.classes = self.classes.to(device)
+        self.to(device)
+
     def update(self, preds: torch.Tensor, target: torch.Tensor) -> None:
         preds = self.reduction(preds)
         return super().update(preds, target)

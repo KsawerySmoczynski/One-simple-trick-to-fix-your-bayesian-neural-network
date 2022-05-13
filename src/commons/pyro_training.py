@@ -37,22 +37,24 @@ def train(
 ) -> Tuple[PyroModule, PyroModule]:
     for e in range(epochs):
         loss = 0
-        for X, y in tqdm(train_loader, desc=f"Epoch {e}", miniters=10):
+        for X, y in tqdm(train_loader, desc=f"Batch {e}", miniters=10):
             X = X.to(device)
             y = y.to(device)
             loss += svi.step(X, y)
         print("Loss:", loss / len(train_loader.dataset))
-        predictive = Predictive(model, num_samples=num_samples, return_sites=("obs",))
-        print(f"Start eval for epoch: {e}")
-        evaluation(predictive, test_loader, metrics, device)
+        if e % 5 == 0:
+            predictive = Predictive(model, guide=guide, num_samples=num_samples, return_sites=("obs",))
+            print(f"Start eval for epoch: {e}")
+            evaluation(predictive, test_loader, metrics, device)
     return model, guide
 
 
 def evaluation(predictive, dataloader, metrics, device):
     for X, y in dataloader:
-        out = predictive(X.to(device))["obs"].T.cpu()
+        y = y.to(device)
+        out = predictive(X.to(device))["obs"].T
         for metric in metrics:
-            metric.update(out, y)
+            metric.update(out, y.to(device))
     # TODO report to tensorboard
     for metric in metrics:
         print(f"{metric.__class__.__name__} - {metric.compute():.4f}")
