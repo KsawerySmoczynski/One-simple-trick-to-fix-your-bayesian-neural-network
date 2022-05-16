@@ -1,0 +1,13 @@
+model:
+  model:
+    class_path: src.models.LogisticRegression
+    init_args:
+      in_channels: 1
+      n_classes: 10
+  lr: 0.001
+data:
+  dataset: "MNIST"
+  dataset_path: "datasets"
+  num_workers: 16
+  train_batch_size: 128
+  valtest_batch_size: 128

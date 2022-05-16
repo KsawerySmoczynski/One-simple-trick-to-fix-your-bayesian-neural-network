@@ -1,0 +1,14 @@
+model:
+  model:
+    class_path: src.models.LeNet
+    init_args:
+      in_channels: 1
+      n_classes: 10
+      kernels_per_layer: 2
+  lr: 0.001
+data:
+  dataset: "MNIST"
+  dataset_path: "datasets"
+  num_workers: 16
+  train_batch_size: 256
+  valtest_batch_size: 256

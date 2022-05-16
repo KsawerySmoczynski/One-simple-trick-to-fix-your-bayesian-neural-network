@@ -34,22 +34,25 @@ def train(
     num_samples: int,
     metrics: Tuple[Metric],
     device: torch.DeviceObjType,
+    log_file: str,
 ) -> Tuple[PyroModule, PyroModule]:
-    for e in range(epochs):
-        loss = 0
-        for X, y in tqdm(train_loader, desc=f"Batch {e}", miniters=10):
-            X = X.to(device)
-            y = y.to(device)
-            loss += svi.step(X, y)
-        print("Loss:", loss / len(train_loader.dataset))
-        if e % 5 == 0:
-            predictive = Predictive(model, guide=guide, num_samples=num_samples, return_sites=("obs",))
-            print(f"Start eval for epoch: {e}")
-            evaluation(predictive, test_loader, metrics, device)
-    return model, guide
+    with open(log_file, "w") as f:
+        for e in range(epochs):
+            loss = 0
+            f.write(f"Epoch {e}\n")
+            for X, y in tqdm(train_loader, desc=f"Epoch {e}", miniters=10):
+                X = X.to(device)
+                y = y.to(device)
+                loss += svi.step(X, y)
+            f.write(f"Loss: {loss / len(train_loader.dataset)}\n")
+            if e % 5 == 0:
+                predictive = Predictive(model, guide=guide, num_samples=num_samples, return_sites=("obs",))
+                f.write(f"Start eval for epoch: {e}\n")
+                evaluation(predictive, test_loader, metrics, device, f)
+        return model, guide
 
 
-def evaluation(predictive, dataloader, metrics, device):
+def evaluation(predictive, dataloader, metrics, device, file):
     for X, y in dataloader:
         y = y.to(device)
         out = predictive(X.to(device))["obs"].T
@@ -57,5 +60,5 @@ def evaluation(predictive, dataloader, metrics, device):
             metric.update(out, y.to(device))
     # TODO report to tensorboard
     for metric in metrics:
-        print(f"{metric.__class__.__name__} - {metric.compute():.4f}")
+        file.write(f"{metric.__class__.__name__} - {metric.compute():.4f}\n")
         metric.reset()

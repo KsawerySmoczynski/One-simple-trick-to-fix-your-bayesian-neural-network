@@ -1,13 +1,13 @@
 data:
-  dataset_name: "MNIST"
+  dataset_name: "FashionMNIST"
   train_dataset:
-    class_path: torchvision.datasets.MNIST
+    class_path: torchvision.datasets.FashionMNIST
     init_args:
       root: datasets
       train: true
       download: true
   test_dataset:
-    class_path: torchvision.datasets.MNIST
+    class_path: torchvision.datasets.FashionMNIST
     init_args:
       root: datasets
       train: false

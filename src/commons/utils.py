@@ -95,14 +95,16 @@ def get_configs(config: Dict) -> Dict:
     assert "seed_everything" in config
     assert "metrics" in config
     assert "trainer" in config
+    assert "activation" in config
 
     model_config = config["model"]
     data_config = config["data"]
     seed = config["seed_everything"]
     metrics_config = config["metrics"]
+    activation_config = config["activation"]
     training_config = config["trainer"]
     training_config["seed"] = seed
-    return model_config, data_config, metrics_config, training_config
+    return model_config, data_config, metrics_config, activation_config, training_config
 
 
 def get_metrics(metrics_config: List) -> List:
@@ -126,3 +128,71 @@ def traverse_config_and_initialize(iterable: Union[Dict, List, Tuple]):
         return items
     else:
         return inpt
+
+
+def find_mass(net, layer, idx, val, train_loader, device):
+    thres = 0.01
+    mult = 1.1
+    init_window = 0.1
+    max_window = 10000
+
+    logp, _ = calculate_ll(train_loader, net, device)
+
+    right_window = init_window
+    while right_window < max_window:
+        print(",", end="")
+        new_val = val + right_window
+        net.state_dict()[layer][tuple(idx)] = new_val
+        ll, _ = calculate_ll(train_loader, net, device)
+
+        if np.exp(ll - logp) < thres:
+            break
+
+        else:
+            right_window *= 1.1
+
+    print("")
+
+    left_window = init_window
+    while left_window < max_window:
+        print(",", end="")
+        new_val = val - left_window
+        net.state_dict()[layer][tuple(idx)] = new_val
+        ll, _ = calculate_ll(train_loader, net, device)
+
+        if np.exp(ll - logp) < thres:
+            break
+
+        else:
+            left_window *= 1.1
+
+    print("")
+    print("calculated likelihood mass for layer:")
+    print(layer)
+
+    return left_window, right_window
+
+
+def fit_sigma(x, p):
+    mu_idx = np.argmax(p)
+    mu = x[mu_idx]
+
+    min_err = None
+    max_sigma = 100000
+    sigma = 0.1
+
+    while sigma < max_sigma:
+        pn = torch.exp(-((torch.Tensor(x) - mu) ** 2 / (2 * sigma**2)))
+        # normalize
+        pn = pn / pn[mu_idx]
+        err = torch.mean((pn - torch.from_numpy(p)) ** 2)
+
+        if min_err is not None and err > min_err:
+            break
+
+        if min_err is None or err < min_err:
+            min_err = err
+
+        sigma *= 1.1
+
+    return pn

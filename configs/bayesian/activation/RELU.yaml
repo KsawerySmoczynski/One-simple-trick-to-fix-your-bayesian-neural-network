@@ -1,0 +1,3 @@
+activation:
+  activation_name: "RELU"
+  class_path: torch.nn.ReLU

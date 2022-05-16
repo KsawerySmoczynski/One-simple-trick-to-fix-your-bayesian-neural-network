@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 import pyro
 import pyro.distributions as dist
 import torch
@@ -12,6 +14,7 @@ class BNN(PyroModule):
     def __init__(self, model: nn.Module, mean: float, std: float):
         super().__init__()
         self.model = model
+        self.net = deepcopy(model)
         self.mean = torch.tensor(mean)
         self.std = torch.tensor(std)
         self.guide = None
