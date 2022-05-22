@@ -1,5 +1,4 @@
 data:
-  dataset_name: "FashionMNIST"
   train_dataset:
     class_path: torchvision.datasets.FashionMNIST
     init_args:

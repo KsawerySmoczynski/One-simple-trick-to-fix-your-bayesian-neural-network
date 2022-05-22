@@ -6,16 +6,14 @@ from src.models.module import Module
 
 
 class LeNet(Module):
-    def __init__(self, activation: nn.Module, in_channels: int, n_classes: int, kernels_per_layer: int):
+    def __init__(self, activation: nn.Module, in_channels: int, n_classes: int):
         super().__init__(activation)
         self.conv = nn.Sequential(
             nn.Conv2d(in_channels, 6, 5, padding=2),
-            # SeparableConv(in_channels, 6, 5, kernels_per_layer, padding=2),
             nn.MaxPool2d(2),
             self.activation,
             nn.Dropout(0.2),
             nn.Conv2d(6, 16, 5),
-            # SeparableConv(6, 16, 5, kernels_per_layer),
             nn.MaxPool2d(2),
             self.activation,
             nn.Dropout(0.2),

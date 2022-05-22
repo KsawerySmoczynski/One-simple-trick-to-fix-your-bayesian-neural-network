@@ -3,7 +3,6 @@ from copy import deepcopy
 import pyro
 import pyro.distributions as dist
 import torch
-from numpy import float32
 from pyro.infer.autoguide import AutoDiagonalNormal
 from pyro.nn import PyroModule
 from pyro.nn.module import PyroSample, to_pyro_module_
@@ -14,7 +13,7 @@ class BNN(PyroModule):
     def __init__(self, model: nn.Module, mean: float, std: float):
         super().__init__()
         self.model = model
-        self.net = deepcopy(model)
+        # self.net = deepcopy(model)
         self.mean = torch.tensor(mean)
         self.std = torch.tensor(std)
         self.guide = None
@@ -52,7 +51,7 @@ class BNNClassification(BNN):
         logits = self.model.forward(X)
         with pyro.plate("data", X.shape[0]):
             obs = pyro.sample("obs", dist.Categorical(logits=logits), obs=y)
-        return logits
+        return torch.exp(logits)
 
 
 class BNNRegression(BNN):

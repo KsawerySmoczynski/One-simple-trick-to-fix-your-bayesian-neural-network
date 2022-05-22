@@ -25,7 +25,7 @@ def load_config(config_paths: List[str]):
 
 
 def parse_net_class(model_config_path: str, activation_path: str):
-    activation_config = yaml.load(open(model_config_path, "r"), Loader=yaml.FullLoader)["activation"]
+    activation_config = yaml.load(open(activation_path, "r"), Loader=yaml.FullLoader)["activation"]
     net_config = yaml.load(open(model_config_path, "r"), Loader=yaml.FullLoader)["model"]["model"]
     net_config["init_args"]["activation"] = activation_config
     return initialize_object(net_config)

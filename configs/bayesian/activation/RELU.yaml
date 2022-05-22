@@ -1,3 +1,5 @@
-activation:
-  activation_name: "RELU"
-  class_path: torch.nn.ReLU
+model:
+  model:
+    init_args:
+      activation:
+        class_path: torch.nn.ReLU

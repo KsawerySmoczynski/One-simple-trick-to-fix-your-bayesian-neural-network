@@ -15,7 +15,7 @@ class ReductionMixin(metaclass=abc.ABCMeta):
         )
 
     @abc.abstractmethod
-    def _get_reduction(self, input_type: str):
+    def _get_reduction(self, reduction: str):
         """Load in the data set"""
         raise NotImplementedError
 
@@ -25,20 +25,20 @@ class ReductionMixin(metaclass=abc.ABCMeta):
 
 
 class ClassificationReductionMixin(ReductionMixin):
-    def _get_reduction(self, input_type: str):
+    def _get_reduction(self, reduction: str = "none"):
         def reduce_samples(preds: torch.Tensor):
             summed_classes = (preds[:, :, None] == self.classes[None, None, :]).sum(1)  # batch_size x n_samples x class
             return summed_classes / preds.shape[1]
 
-        if input_type == "samples":
+        if reduction == "samples":
             return reduce_samples
-        elif input_type == "probabilities":
+        else:
             return lambda x: x
 
 
 class RegressionReductionMixin(ReductionMixin):
-    def _get_reduction(self, input_type: str):
-        if input_type == "samples":
+    def _get_reduction(self, reduction: str = "none"):
+        if reduction == "samples":
             return lambda x: x.mean(dim=1)  # batch_size x n_samples
-        elif input_type == "probabilities":
+        else:
             return lambda x: x

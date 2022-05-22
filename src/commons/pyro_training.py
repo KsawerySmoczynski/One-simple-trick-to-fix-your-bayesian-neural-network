@@ -6,6 +6,7 @@ from pyro.infer import SVI, Predictive
 from pyro.nn.module import PyroModule
 from torch import nn
 from torch.utils.data import DataLoader
+from torch.utils.tensorboard import SummaryWriter
 from torchmetrics import Metric
 from tqdm import tqdm
 
@@ -33,32 +34,30 @@ def train(
     epochs: int,
     num_samples: int,
     metrics: Tuple[Metric],
+    writer: SummaryWriter,
     device: torch.DeviceObjType,
-    log_file: str,
 ) -> Tuple[PyroModule, PyroModule]:
-    with open(log_file, "w") as f:
-        for e in range(epochs):
-            loss = 0
-            f.write(f"Epoch {e}\n")
-            for X, y in tqdm(train_loader, desc=f"Epoch {e}", miniters=10):
-                X = X.to(device)
-                y = y.to(device)
-                loss += svi.step(X, y)
-            f.write(f"Loss: {loss / len(train_loader.dataset)}\n")
-            if e % 5 == 0:
-                predictive = Predictive(model, guide=guide, num_samples=num_samples, return_sites=("obs",))
-                f.write(f"Start eval for epoch: {e}\n")
-                evaluation(predictive, test_loader, metrics, device, f)
-        return model, guide
+    for e in range(epochs):
+        loss = 0
+        for idx, (X, y) in tqdm(enumerate(train_loader), desc=f"Epoch {e}", miniters=10):
+            X = X.to(device)
+            y = y.to(device)
+            step_loss = svi.step(X, y)
+            loss += step_loss
+            writer.add_scalar("train-loss/step", step_loss, (e + 1) * len(train_loader) + idx)
+        writer.add_scalar("train-loss/epoch", loss, e + 1)
+        if e % 5 == 0:
+            predictive = Predictive(model, guide=guide, num_samples=num_samples, return_sites=("obs",))
+            evaluation(e, predictive, test_loader, metrics, writer, device)
+    return model, guide
 
 
-def evaluation(predictive, dataloader, metrics, device, file):
+def evaluation(epoch, predictive, dataloader, metrics, writer, device):
     for X, y in dataloader:
         y = y.to(device)
         out = predictive(X.to(device))["obs"].T
         for metric in metrics:
             metric.update(out, y.to(device))
-    # TODO report to tensorboard
     for metric in metrics:
-        file.write(f"{metric.__class__.__name__} - {metric.compute():.4f}\n")
+        writer.add_scalar(f"eval/{metric.__class__.__name__}", metric.compute(), epoch)
         metric.reset()

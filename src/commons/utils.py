@@ -95,16 +95,14 @@ def get_configs(config: Dict) -> Dict:
     assert "seed_everything" in config
     assert "metrics" in config
     assert "trainer" in config
-    assert "activation" in config
 
-    model_config = config["model"]
-    data_config = config["data"]
+    model_config = {**config["model"]}
+    data_config = {**config["data"]}
     seed = config["seed_everything"]
-    metrics_config = config["metrics"]
-    activation_config = config["activation"]
-    training_config = config["trainer"]
+    metrics_config = [*config["metrics"]]
+    training_config = {**config["trainer"]}
     training_config["seed"] = seed
-    return model_config, data_config, metrics_config, activation_config, training_config
+    return model_config, data_config, metrics_config, training_config
 
 
 def get_metrics(metrics_config: List) -> List:

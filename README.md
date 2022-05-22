@@ -11,7 +11,7 @@ python scripts/bayesian_train.py --config [list of paths to configs to be merged
 Example:
 ```bash
 python scripts/bayesian_train.py --config configs/base_config.yaml configs/bayesian/models/mle_classify.yaml \\
-                                          configs/bayesian/data/MNIST.yaml configs/bayesian/metrics/classification.yaml
+                                          configs/bayesian/data/MNIST.yaml configs/bayesian/metrics/classification.yaml configs/bayesian/activation/LeakyRELU.yaml
 ```
 
 Basic setup requires:

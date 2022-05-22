@@ -5,8 +5,6 @@ model:
       in_size: 8
       hidden_size: 128
       out_size: 1
-      activation:
-        class_path: torch.nn.Sigmoid
   mean: 0. #MUST BE FLOATS OTHERWISE RESULT IN ERRORS
   std: 1. #MUST BE FLOATS OTHERWISE RESULT IN ERRORS
   sigma_bound: 5. #MUST BE FLOATS OTHERWISE RESULT IN ERRORS
