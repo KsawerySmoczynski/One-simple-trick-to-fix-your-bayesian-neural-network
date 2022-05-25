@@ -1,12 +1,19 @@
 #!/bin/bash
-for MODEL in mle_classify deep_mle_classify conv_classify
+DATASETS_PATTERN=${1}
+MODELS_PATTERN=${2}
+ACTIVATIONS_PATTERN=${3}
+DATASETS=$(echo "configs/bayesian/data/*${DATASETS_PATTERN}*")
+MODELS=$(echo "configs/bayesian/models/*${MODELS_PATTERN}*")
+ACTIVATIONS=$(echo "configs/bayesian/activation/*${ACTIVATIONS_PATTERN}*")
+{
+for DATASET_CONFIG in ${DATASETS}
 do
-	for ACTIVATION in RELU LeakyRELU
+	for MODEL_CONFIG in ${MODELS}
 	do
-		for DATASET in MNIST FashionMNIST
+		for ACTIVATION_CONFIG in ${ACTIVATIONS}
 		do
-			echo "Running experiment for: ${MODEL} ${ACTIVATION} ${DATASET}"
-			python scripts/bayesian_train.py --config configs/base_config.yaml configs/bayesian/metrics/classification.yaml configs/bayesian/models/${MODEL}.yaml configs/bayesian/data/${DATASET}.yaml configs/bayesian/activation/${ACTIVATION}.yaml
+			python scripts/bayesian_train.py --config configs/base_config.yaml configs/bayesian/metrics/classification.yaml ${MODEL_CONFIG} ${DATASET_CONFIG} ${ACTIVATION_CONFIG} --num-samples 50 --monitor-metric Accuracy --monitor-metric-mode max
 		done
 	done
 done
+} 2>&1 | ts | tee run.log

@@ -1,34 +1,12 @@
 data:
-  train_dataset:
-    class_path: torchvision.datasets.FashionMNIST
-    init_args:
-      root: datasets
-      train: true
-      download: true
-  test_dataset:
-    class_path: torchvision.datasets.FashionMNIST
-    init_args:
-      root: datasets
-      train: false
-      download: true
-  num_workers: 2
-  train_batch_size: 512
-  test_batch_size: 512
-  train_transform:
-    class_path: torchvision.transforms.Compose
-    init_args:
-      -
-        - class_path: torchvision.transforms.ToTensor
-        - class_path: torchvision.transforms.Normalize
-          init_args:
-            - [0.1307]
-            - [0.3081]
-  test_transform:
-    class_path: torchvision.transforms.Compose
-    init_args:
-      -
-        - class_path: torchvision.transforms.ToTensor
-        - class_path: torchvision.transforms.Normalize
-          init_args:
-            - [0.1307]
-            - [0.3081]
+  class_path: src.data.classification.FashionMNIST
+  init_args:
+    train_batch_size: 512
+    test_batch_size: 512
+    root: datasets
+    train_ratio: 0.7
+    validation_ratio: 0.3
+    dataloader_args:
+      num_workers: 16
+      pin_memory: true
+      persistent_workers: true

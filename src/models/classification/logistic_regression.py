@@ -6,8 +6,8 @@ from src.models.module import Module
 
 
 class LogisticRegression(Module):
-    def __init__(self, in_channels: int, n_classes: int):
-        super().__init__(nn.ReLU())
+    def __init__(self, activation: nn.Module, in_channels: int, n_classes: int):
+        super().__init__(activation)
         self.linear = nn.Linear(in_channels * 28**2, n_classes)
         self.print_parameter_size()
 

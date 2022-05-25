@@ -2,12 +2,15 @@ import importlib
 import random
 from collections.abc import MutableMapping
 from copy import deepcopy
+from functools import reduce
 from typing import Dict, List, Tuple, Union
 
 import numpy as np
 import torch
 import torch.nn.functional as F
+import yaml
 from torch.nn.utils import parameters_to_vector, vector_to_parameters
+from torchvision import transforms
 
 from src.models.normal import N
 
@@ -98,15 +101,17 @@ def get_configs(config: Dict) -> Dict:
 
     model_config = {**config["model"]}
     data_config = {**config["data"]}
-    seed = config["seed_everything"]
     metrics_config = [*config["metrics"]]
     training_config = {**config["trainer"]}
-    training_config["seed"] = seed
+    training_config["seed"] = config["seed_everything"]
     return model_config, data_config, metrics_config, training_config
 
 
-def get_metrics(metrics_config: List) -> List:
-    return [initialize_object(metric) for metric in metrics_config]
+def get_metrics(metrics_config: Dict, device: torch.DeviceObjType) -> Dict:
+    metrics = [initialize_object(metric) for metric in metrics_config]
+    for metric in metrics:
+        metric.set_device(device)
+    return {metric.__class__.__name__: metric for metric in metrics}
 
 
 def traverse_config_and_initialize(iterable: Union[Dict, List, Tuple]):
@@ -157,40 +162,3 @@ def find_mass(net, layer, idx, val, train_loader, device):
         new_val = val - left_window
         net.state_dict()[layer][tuple(idx)] = new_val
         ll, _ = calculate_ll(train_loader, net, device)
-
-        if np.exp(ll - logp) < thres:
-            break
-
-        else:
-            left_window *= 1.1
-
-    print("")
-    print("calculated likelihood mass for layer:")
-    print(layer)
-
-    return left_window, right_window
-
-
-def fit_sigma(x, p):
-    mu_idx = np.argmax(p)
-    mu = x[mu_idx]
-
-    min_err = None
-    max_sigma = 100000
-    sigma = 0.1
-
-    while sigma < max_sigma:
-        pn = torch.exp(-((torch.Tensor(x) - mu) ** 2 / (2 * sigma**2)))
-        # normalize
-        pn = pn / pn[mu_idx]
-        err = torch.mean((pn - torch.from_numpy(p)) ** 2)
-
-        if min_err is not None and err > min_err:
-            break
-
-        if min_err is None or err < min_err:
-            min_err = err
-
-        sigma *= 1.1
-
-    return pn
