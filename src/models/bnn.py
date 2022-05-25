@@ -1,11 +1,20 @@
 import pyro
 import pyro.distributions as dist
 import torch
-from numpy import float32
-from pyro.infer.autoguide import AutoDiagonalNormal
+from pyro.infer.autoguide import AutoGuide
 from pyro.nn import PyroModule
 from pyro.nn.module import PyroSample, to_pyro_module_
 from torch import nn
+
+
+class BNNContainer(nn.Module):
+    def __init__(self, model: PyroModule, guide: AutoGuide):
+        super().__init__()
+        self.model = model
+        self.guide = guide
+
+    def forward(self, X: torch.Tensor, y: torch.Tensor = None):
+        return self.model(X, y)
 
 
 class BNN(PyroModule):
@@ -14,9 +23,15 @@ class BNN(PyroModule):
         self.model = model
         self.mean = torch.tensor(mean)
         self.std = torch.tensor(std)
-        self.guide = None
 
-    def forward(self, x: torch.Tensor, y: torch.Tensor = None):
+    @property
+    def __name__(self):
+        return self.model.__class__.__name__
+
+    def __str__(self):
+        return self.model.__class__.__name__
+
+    def forward(self, X: torch.Tensor, y: torch.Tensor = None):
         raise NotImplementedError("Use one of the subclassess")
 
     def setup(self, device: torch.DeviceObjType):
@@ -24,7 +39,6 @@ class BNN(PyroModule):
         self.mean = self.mean.to(device)
         self.std = self.std.to(device)
         self._pyroize()
-        self.guide = AutoDiagonalNormal(self)
 
     def _pyroize(self):
         to_pyro_module_(self.model)
@@ -36,8 +50,8 @@ class BNN(PyroModule):
                     PyroSample(prior=dist.Normal(self.mean, self.std).expand(value.shape).to_event(value.dim())),
                 )
 
-    def _model(self, x, y=None):
-        return self.forward(x, y)
+    def _model(self, X: torch.Tensor, y=None):
+        return self.forward(X, y)
 
 
 class BNNClassification(BNN):
@@ -49,7 +63,7 @@ class BNNClassification(BNN):
         logits = self.model.forward(X)
         with pyro.plate("data", X.shape[0]):
             obs = pyro.sample("obs", dist.Categorical(logits=logits), obs=y)
-        return logits
+        return logits.exp()
 
 
 class BNNRegression(BNN):

@@ -1,12 +1,18 @@
+import sys
 from functools import reduce
 from pathlib import Path
 from typing import Dict, List
 
+import pyro
 import torch
 import yaml
 from torch import nn
 
 from src.commons.utils import _rec_dict_merge, initialize_object
+
+
+def print_command():
+    print(" ".join(sys.argv))
 
 
 def save_config(config: Dict, path: Path):
@@ -37,3 +43,12 @@ def load_net(net: nn.Module, model_path: str, device: str, lightning_model: bool
         net.load_state_dict(torch.load(model_path))
     net = net.to(device)
     return net
+
+
+def save_param_store(workdir: Path):
+    pyro.get_param_store().save(workdir / "param_store.pt")
+
+
+def load_param_store(workdir: Path):
+    pyro.clear_param_store()
+    pyro.get_param_store().load(workdir / "param_store.pt")

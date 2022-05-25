@@ -1,5 +1,4 @@
 import torch.nn.functional as F
-from pyro.nn import PyroModule
 from torch import nn
 
 from src.models.module import Module
@@ -13,7 +12,6 @@ class MLEClassify(Module):
 
     def forward(self, x):
         x = x.view(x.shape[0], -1)
-        h = self.activation(self.layer1(x))
-        logits = self.layer2(h)
-        probs = F.log_softmax(logits, dim=1).squeeze()
-        return probs
+        x = self.activation(self.layer1(x))
+        x = self.layer2(x)
+        return F.log_softmax(x, dim=1).squeeze()

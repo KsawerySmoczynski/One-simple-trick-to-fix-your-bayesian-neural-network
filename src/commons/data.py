@@ -1,38 +1,7 @@
-from typing import Callable, Dict, Tuple
-
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader
 from torchvision import transforms
-
-from src.commons.utils import traverse_config_and_initialize
-
-
-def get_transforms(data_config: Dict) -> Tuple[Callable, Callable]:
-    train_transform = traverse_config_and_initialize(data_config["train_transform"])
-    test_transform = traverse_config_and_initialize(data_config["test_transform"])
-
-    return train_transform, test_transform
-
-
-def get_dataloaders(
-    train_dataset, test_dataset, train_batch_size: int, test_batch_size: int, num_workers: int, *args, **kwargs
-):
-    train_dataloader = DataLoader(
-        train_dataset, train_batch_size, shuffle=True, num_workers=num_workers, pin_memory=True, persistent_workers=True
-    )
-    test_dataloader = DataLoader(
-        test_dataset, test_batch_size, num_workers=num_workers, pin_memory=True, persistent_workers=True
-    )
-    return train_dataloader, test_dataloader
-
-
-def get_datasets(train_dataset, test_dataset, train_transform, test_transform, *args, **kwargs):
-    train_dataset["init_args"]["transform"] = train_transform
-    train_dataset = traverse_config_and_initialize(train_dataset)
-    test_dataset["init_args"]["transform"] = test_transform
-    test_dataset = traverse_config_and_initialize(test_dataset)
-
-    return train_dataset, test_dataset
+from torchvision.datasets import MNIST, FashionMNIST
 
 
 class DataModule(LightningDataModule):

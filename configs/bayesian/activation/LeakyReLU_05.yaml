@@ -1,0 +1,7 @@
+model:
+  model:
+    init_args:
+      activation:
+        class_path: torch.nn.LeakyReLU
+        init_args:
+          negative_slope: 0.5

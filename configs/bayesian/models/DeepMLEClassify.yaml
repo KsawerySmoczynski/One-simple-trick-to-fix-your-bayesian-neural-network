@@ -1,11 +1,11 @@
 model:
+  model_name: "deep_mle_classify"
   model:
-    class_path: src.models.classification.LogisticRegression
+    class_path: src.models.classification.DeepMLEClassify
     init_args:
-      in_channels: 1
-      n_classes: 10
-      activation:
-        class_path: torch.nn.ReLU
+      in_size: 784
+      hidden_size: 1000
+      out_size: 10
   mean: 0. #MUST BE FLOATS OTHERWISE RESULT IN ERRORS
   std: 1. #MUST BE FLOATS OTHERWISE RESULT IN ERRORS
   optimizer:

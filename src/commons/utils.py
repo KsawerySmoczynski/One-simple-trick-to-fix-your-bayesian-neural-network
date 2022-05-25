@@ -2,12 +2,15 @@ import importlib
 import random
 from collections.abc import MutableMapping
 from copy import deepcopy
+from functools import reduce
 from typing import Dict, List, Tuple, Union
 
 import numpy as np
 import torch
 import torch.nn.functional as F
+import yaml
 from torch.nn.utils import parameters_to_vector, vector_to_parameters
+from torchvision import transforms
 
 from src.models.normal import N
 
@@ -96,17 +99,19 @@ def get_configs(config: Dict) -> Dict:
     assert "metrics" in config
     assert "trainer" in config
 
-    model_config = config["model"]
-    data_config = config["data"]
-    seed = config["seed_everything"]
-    metrics_config = config["metrics"]
-    training_config = config["trainer"]
-    training_config["seed"] = seed
+    model_config = {**config["model"]}
+    data_config = {**config["data"]}
+    metrics_config = [*config["metrics"]]
+    training_config = {**config["trainer"]}
+    training_config["seed"] = config["seed_everything"]
     return model_config, data_config, metrics_config, training_config
 
 
-def get_metrics(metrics_config: List) -> List:
-    return [initialize_object(metric) for metric in metrics_config]
+def get_metrics(metrics_config: Dict, device: torch.DeviceObjType) -> Dict:
+    metrics = [initialize_object(metric) for metric in metrics_config]
+    for metric in metrics:
+        metric.set_device(device)
+    return {metric.__class__.__name__: metric for metric in metrics}
 
 
 def traverse_config_and_initialize(iterable: Union[Dict, List, Tuple]):
@@ -126,3 +131,34 @@ def traverse_config_and_initialize(iterable: Union[Dict, List, Tuple]):
         return items
     else:
         return inpt
+
+
+def find_mass(net, layer, idx, val, train_loader, device):
+    thres = 0.01
+    mult = 1.1
+    init_window = 0.1
+    max_window = 10000
+
+    logp, _ = calculate_ll(train_loader, net, device)
+
+    right_window = init_window
+    while right_window < max_window:
+        print(",", end="")
+        new_val = val + right_window
+        net.state_dict()[layer][tuple(idx)] = new_val
+        ll, _ = calculate_ll(train_loader, net, device)
+
+        if np.exp(ll - logp) < thres:
+            break
+
+        else:
+            right_window *= 1.1
+
+    print("")
+
+    left_window = init_window
+    while left_window < max_window:
+        print(",", end="")
+        new_val = val - left_window
+        net.state_dict()[layer][tuple(idx)] = new_val
+        ll, _ = calculate_ll(train_loader, net, device)
