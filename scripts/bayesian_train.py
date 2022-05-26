@@ -69,13 +69,14 @@ def main(config: Dict, args):
         args.evaluation_interval,
         args.monitor_metric,
         args.monitor_metric_mode,
+        args.early_stopping_epochs,
     )
 
     print("Testing bayesian model...")
     bayesian_metrics_path = workdir / "bayesian_metrics.csv"
     for metric in metrics.values():
         metric.reset()
-    if args.monitor_metric:
+    if args.monitor_metric and not args.early_stopping_epochs:
         load_param_store(workdir)
     predictive = Predictive(model, guide=guide, num_samples=args.num_samples, return_sites=("obs",))
     evaluation(predictive, test_loader, metrics, device)
@@ -120,14 +121,21 @@ if __name__ == "__main__":
     )
     parser.add_argument("--monitor-metric", type=str, help="Save model depending on improvement on this metric")
     parser.add_argument("--monitor-metric-mode", type=str, help="Whether the metric is a stimulant or destimulant")
+    parser.add_argument("--early-stopping-epochs", type=int, help="If to use early stopping during training phase")
     parser.add_argument(
         "--evaluation-interval", type=int, default=1, help="Every each epoch validation should be performed"
     )
     parser.add_argument("--workdir", type=Path, default=Path("logs"), help="Path to store training artifacts")
     args = parser.parse_args()
-    assert not (
-        bool(args.monitor_metric) ^ bool(args.monitor_metric_mode)
+    metrics_valid = not (bool(args.monitor_metric) ^ bool(args.monitor_metric_mode))
+    assert (
+        metrics_valid
     ), "Arguments monitor metric and monitor metric mode should be either passed both or none of them should be passed"
+    if args.early_stopping_epochs:
+        assert args.early_stopping_epochs > 1, "Early stopping should be set up to > 1 epochs"
+        assert (
+            bool(args.monitor_metric) and bool(args.monitor_metric_mode) and args.early_stopping_epochs
+        ), "Both metric to monitor and it's mode have to be set up while using early stopping"
     args.workdir = args.workdir / datetime.now().strftime("%Y%m%d")
     config = load_config(args.config)
     model_config, data_config, metrics_config, training_config = get_configs(config)
