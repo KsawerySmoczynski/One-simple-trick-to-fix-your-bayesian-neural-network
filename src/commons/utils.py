@@ -2,15 +2,13 @@ import importlib
 import random
 from collections.abc import MutableMapping
 from copy import deepcopy
-from functools import reduce
 from typing import Dict, List, Tuple, Union
 
 import numpy as np
+import pyro
 import torch
 import torch.nn.functional as F
-import yaml
 from torch.nn.utils import parameters_to_vector, vector_to_parameters
-from torchvision import transforms
 
 from src.models.normal import N
 
@@ -60,6 +58,7 @@ def seed_everything(seed: int) -> int:
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
+    pyro.set_rng_seed(seed)
 
     return seed
 
@@ -162,3 +161,12 @@ def find_mass(net, layer, idx, val, train_loader, device):
         new_val = val - left_window
         net.state_dict()[layer][tuple(idx)] = new_val
         ll, _ = calculate_ll(train_loader, net, device)
+
+
+def eval_early_stopping(early_stopping_epochs: int, no_improvement_epochs: int, improved: bool) -> int:
+    if improved:
+        no_improvement_epochs = 0
+    else:
+        no_improvement_epochs += 1
+
+    return early_stopping_epochs == no_improvement_epochs, no_improvement_epochs

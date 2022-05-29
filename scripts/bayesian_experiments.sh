@@ -12,7 +12,7 @@ do
 	do
 		for ACTIVATION_CONFIG in ${ACTIVATIONS}
 		do
-			python scripts/bayesian_train.py --config configs/base_config.yaml configs/bayesian/metrics/classification.yaml ${MODEL_CONFIG} ${DATASET_CONFIG} ${ACTIVATION_CONFIG} --num-samples 50 --monitor-metric Accuracy --monitor-metric-mode max
+			python scripts/bayesian_train.py --config configs/base_config.yaml configs/bayesian/metrics/classification.yaml ${MODEL_CONFIG} ${DATASET_CONFIG} ${ACTIVATION_CONFIG} --num-samples 50 --monitor-metric Accuracy --monitor-metric-mode max --early-stopping-epochs 3
 		done
 	done
 done
