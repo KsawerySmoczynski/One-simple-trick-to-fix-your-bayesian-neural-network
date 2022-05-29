@@ -1,20 +1,21 @@
 from typing import Any
 
-import torch as t
+import torch
 from pytorch_lightning import LightningModule
 from torch import nn
 from torchmetrics.functional import accuracy
 
+from src.commons.utils import initialize_object
 
-class BayesianModule(LightningModule):
-    def __init__(self, model: nn.Module, lr: float, *args: Any, **kwargs: Any) -> None:
+
+class TrainingModule(LightningModule):
+    def __init__(self, model: nn.Module, criterion: nn.Module, optimizer: dict, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        # TODO add custom saving callback in CLI
         self.model = model
-        self.criterion = nn.CrossEntropyLoss()
-        self.lr = lr
+        self.criterion = criterion
+        self.optimizer = optimizer
 
-    def forward(self, x: t.Tensor) -> t.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.model(x)
 
     def training_step(self, batch, batch_idx):
@@ -40,8 +41,6 @@ class BayesianModule(LightningModule):
         self.log("test/accuracy", accuracy(y_hat, y), on_epoch=True)
 
     def configure_optimizers(self):
-        optim = t.optim.Adam(self.model.parameters(), lr=self.lr)
-        return {
-            "optimizer": optim,
-            "lr_scheduler": {"scheduler": t.optim.lr_scheduler.StepLR(optim, 150, gamma=0.05), "monitor": "loss"},
-        }
+        self.optimizer["init_args"]["params"] = self.model.parameters()
+        self.optimizer = initialize_object(self.optimizer)
+        return self.optimizer

@@ -1,7 +1,7 @@
 from pytorch_lightning.utilities.cli import LightningArgumentParser, LightningCLI
 
 
-class BayesianCLI(LightningCLI):
+class CLI(LightningCLI):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 

@@ -1,13 +1,10 @@
-### 1. Refactor
-* Draw weights or configure them in separate script, also save histogram. Should have functionality of current evaluate_weights_2d.py
-* Run 1d search in one script, add functionality do set ranges for certain weights
-* Run finer 1d evaluation over the interval provided from previous script
-* Perform weights-wise 2d evaluations over the intervals provided in first point
-* Generalize to suport arbitrary eval loop -> eval loop should be contained in scr and case dependent:
-    * Separate ones for: classification (images), regression (simple datasets), forecasting etc.
-
-### 2. Create baselines for simple regression datasets
-
-### 3. Create baselines for time series forecasting
-* Use [nbeats model from pytorch forecasting package](https://pytorch-forecasting.readthedocs.io/en/latest/tutorials/ar.html)
-
+## Training:
+    * [ ] Add support for regression dataset
+    * [ ] Add support for training on subset of dataset
+    * [ ] Implement all metrics as Torchmetrics classes
+    * [ ] Add tensorboard logger
+    * [ ] Add merged config saving
+    * [ ] Add pyro model serialization
+    * [ ] Add TQDM
+    * [ ] Add support for train, test transforms from config -> or easily parametrized
+## Visualisation (to fill)

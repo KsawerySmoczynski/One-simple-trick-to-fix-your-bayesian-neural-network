@@ -1,0 +1,10 @@
+metrics:
+  - class_path: src.metrics.classification.ExpectedCalibrationError
+    init_args:
+      num_classes: 10 #Set based on dataset, #TODO infer automatically this parameter
+      input_type: samples
+      num_bins: 10
+  - class_path: src.metrics.classification.Accuracy
+    init_args:
+      num_classes: 10 #Set based on dataset, #TODO infer automatically this parameter
+      input_type: samples

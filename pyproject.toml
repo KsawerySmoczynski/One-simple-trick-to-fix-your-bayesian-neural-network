@@ -14,20 +14,22 @@ torchvision4ad = "^0.1.1"
 pytorch-lightning = "^1.3.8"
 pandas = "^1.3.4"
 matplotlib = "^3.4.3"
-pyro-ppl = "^1.7.0"
 ipython = "^7.29.0"
 jupyterlab = "^3.2.2"
 jsonargparse = "^3.19.4"
 tensorboard = "^2.7.0"
 torchmetrics = "^0.6.0"
 seaborn = "^0.11.2"
+scikit-learn = "^1.0.2"
+pyro-ppl = "^1.8.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.4"
 pytest-mock = "^3.6.1"
 pytest-cov = "^2.12.1"
 coverage = {extras = ["toml"], version = "^5.5.0"}
-black = "21.10b0"  # Strictly pinned because of .pre-commit-config.yaml compatibility
+black = "^21.10b0"  # Strictly pinned because of .pre-commit-config.yaml compatibility
+click = "==8.0.2"
 pre-commit = "^2.13.0"
 pylint = "^2.9.3"
 isort = "5.9.1"  # Strictly pinned because of .pre-commit-config.yaml compatibility

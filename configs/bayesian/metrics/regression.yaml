@@ -1,0 +1,4 @@
+metrics:
+  - class_path: src.metrics.regression.RootMeanSquaredError
+    init_args:
+      input_type: samples
