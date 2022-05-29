@@ -18,18 +18,18 @@ class BNNContainer(nn.Module):
 
 
 class BNN(PyroModule):
-    def __init__(self, model: nn.Module, mean: float, std: float):
+    def __init__(self, net: nn.Module, mean: float, std: float):
         super().__init__()
-        self.model = model
+        self.net = net
         self.mean = torch.tensor(mean)
         self.std = torch.tensor(std)
 
     @property
     def __name__(self):
-        return self.model.__class__.__name__
+        return self.net.__class__.__name__
 
     def __str__(self):
-        return self.model.__class__.__name__
+        return self.net.__class__.__name__
 
     def forward(self, X: torch.Tensor, y: torch.Tensor = None):
         raise NotImplementedError("Use one of the subclassess")
@@ -41,8 +41,8 @@ class BNN(PyroModule):
         self._pyroize()
 
     def _pyroize(self):
-        to_pyro_module_(self.model)
-        for m in self.model.modules():
+        to_pyro_module_(self.net)
+        for m in self.net.modules():
             for name, value in list(m.named_parameters(recurse=False)):
                 setattr(
                     m,
@@ -50,29 +50,28 @@ class BNN(PyroModule):
                     PyroSample(prior=dist.Normal(self.mean, self.std).expand(value.shape).to_event(value.dim())),
                 )
 
-    def _model(self, X: torch.Tensor, y=None):
+    def _net(self, X: torch.Tensor, y=None):
         return self.forward(X, y)
 
 
 class BNNClassification(BNN):
-    def __init__(self, model: nn.Module, mean: torch.Tensor, std: torch.Tensor):
-        super().__init__(model, mean, std)
+    def __init__(self, net: nn.Module, mean: torch.Tensor, std: torch.Tensor):
+        super().__init__(net, mean, std)
 
     def forward(self, X: torch.Tensor, y: torch.Tensor = None) -> torch.Tensor:
-        pyro.module("model", self.model)
-        logits = self.model.forward(X)
+        logits = self.net.forward(X)
         with pyro.plate("data", X.shape[0]):
             obs = pyro.sample("obs", dist.Categorical(logits=logits), obs=y)
         return logits.exp()
 
 
 class BNNRegression(BNN):
-    def __init__(self, model: nn.Module, mean: torch.Tensor, std: torch.Tensor):
-        super().__init__(model, mean, std)
+    def __init__(self, net: nn.Module, mean: torch.Tensor, std: torch.Tensor):
+        super().__init__(net, mean, std)
 
     def forward(self, X, y=None):
         sigma = pyro.sample("sigma", dist.Uniform(torch.tensor(0.0, device=self.std.device), self.std))
-        mean = self.model(X)
+        mean = self.net(X)
         with pyro.plate("data", X.shape[0]):
             obs = pyro.sample("obs", dist.Normal(self.mean, sigma), obs=y)
         return mean

@@ -11,11 +11,13 @@ from torch.utils.tensorboard import SummaryWriter
 from torchmetrics import Metric
 from tqdm import tqdm
 
+from src.commons.io import save_param_store
 from src.commons.logging import (
     get_monitored_metric_init_val,
-    monitor_and_save_model_improvement,
+    monitor_metric_improvement,
     report_metrics,
 )
+from src.commons.utils import eval_early_stopping
 from src.models import CLASSIFICATION_MODELS, REGRESSION_MODELS
 from src.models.bnn import BNNClassification, BNNContainer, BNNRegression
 
@@ -50,9 +52,13 @@ def train_loop(
     evaluation_interval: int = 1,
     monitor_metric: str = None,
     monitor_metric_mode: str = None,
+    early_stopping_epochs: int = False,
 ) -> Tuple[PyroModule, PyroModule]:
     if monitor_metric:
         monitor_metric_value = get_monitored_metric_init_val(monitor_metric_mode)
+    if early_stopping_epochs:
+        no_improvement_epochs = 0
+        previous_monitor_metric_value = 0
     for e in range(epochs):
         loss = training(svi, train_loader, e, writer, device)
         writer.add_scalar("train/loss-epoch", loss, e + 1)
@@ -60,10 +66,25 @@ def train_loop(
             predictive = Predictive(model, guide=guide, num_samples=num_samples, return_sites=("obs",))
             evaluation(predictive, test_loader, metrics, device)
             if monitor_metric:
-                monitor_metric_value = monitor_and_save_model_improvement(
-                    metrics, monitor_metric, monitor_metric_value, monitor_metric_mode, workdir
+                current_monitor_metric_value = metrics[monitor_metric].compute().cpu()
+                improved = monitor_metric_improvement(
+                    monitor_metric_value, current_monitor_metric_value, monitor_metric_mode
                 )
+                if improved:
+                    save_param_store(workdir)
+                    monitor_metric_value = current_monitor_metric_value
             report_metrics(metrics, "evaluation", e, writer)
+            if early_stopping_epochs:
+                improved = monitor_metric_improvement(
+                    previous_monitor_metric_value, current_monitor_metric_value, monitor_metric_mode
+                )
+                previous_monitor_metric_value = current_monitor_metric_value
+                early_stop, no_improvement_epochs = eval_early_stopping(
+                    early_stopping_epochs, no_improvement_epochs, improved
+                )
+                if early_stop:
+                    break
+
     return model, guide
 
 
