@@ -5,7 +5,6 @@ from src.models.normal import N
 CLASSIFICATION_MODELS = [
     classification.ConvClassify,
     classification.DeepMLEClassify,
-    classification.MLEClassify,
     classification.LeNet,
     classification.LogisticRegression,
 ]
