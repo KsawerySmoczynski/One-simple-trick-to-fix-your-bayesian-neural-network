@@ -7,5 +7,6 @@ CLASSIFICATION_MODELS = [
     classification.DeepMLEClassify,
     classification.LeNet,
     classification.LogisticRegression,
+    classification.ResNet18,
 ]
 REGRESSION_MODELS = [regression.MLERegression]
