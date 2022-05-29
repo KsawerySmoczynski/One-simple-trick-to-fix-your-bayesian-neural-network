@@ -56,7 +56,6 @@ def train_loop(
 ) -> Tuple[PyroModule, PyroModule]:
     if monitor_metric:
         monitor_metric_value = get_monitored_metric_init_val(monitor_metric_mode)
-        ms = []
     if early_stopping_epochs:
         no_improvement_epochs = 0
         previous_monitor_metric_value = 0
@@ -71,7 +70,6 @@ def train_loop(
                 improved = monitor_metric_improvement(
                     monitor_metric_value, current_monitor_metric_value, monitor_metric_mode
                 )
-                ms.append(current_monitor_metric_value)
                 if improved:
                     save_param_store(workdir)
                     monitor_metric_value = current_monitor_metric_value
