@@ -3,8 +3,9 @@ model:
   model:
     class_path: src.models.classification.ConvClassify
     init_args:
-      in_size: 784
+      in_size: 32
       out_size: 10
+      in_channels: 3
   mean: 0.
   std: 1.
   optimizer:
