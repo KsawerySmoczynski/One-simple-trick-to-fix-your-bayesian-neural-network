@@ -46,6 +46,31 @@ def fit_N(x, p):
     return out.cpu().detach().numpy()
 
 
+def fit_sigma(x, p):
+    mu_idx = np.argmax(p)
+    mu = x[mu_idx]
+
+    min_err = None
+    max_sigma = 100000
+    sigma = 0.1
+
+    while sigma < max_sigma:
+        pn = torch.exp(-((torch.Tensor(x) - mu) ** 2 / (2 * sigma**2)))
+        # normalize
+        pn = pn / pn[mu_idx]
+        err = torch.mean((pn - torch.from_numpy(p)) ** 2)
+
+        if min_err is not None and err > min_err:
+            break
+
+        if min_err is None or err < min_err:
+            min_err = err
+
+        sigma *= 1.1
+
+    return pn
+
+
 def seed_everything(seed: int) -> int:
     max_seed_value = np.iinfo(np.uint32).max
     min_seed_value = np.iinfo(np.uint32).min
