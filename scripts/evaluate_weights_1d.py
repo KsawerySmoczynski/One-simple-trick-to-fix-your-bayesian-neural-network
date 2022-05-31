@@ -14,6 +14,7 @@ import yaml
 from torch.nn.utils import parameters_to_vector, vector_to_parameters
 from torch.optim.lr_scheduler import StepLR
 from torchvision import datasets, transforms
+from tqdm import tqdm
 
 from src.commons.io import load_net, parse_net_class
 from src.commons.plotting import plot_1d
@@ -30,7 +31,7 @@ parser = ArgumentParser()
 # parser.add_argument("save_dir", type=str, help="Path to directory where plots, etc. will be saved")
 parser.add_argument("net_path", type=str, help="Path to the pytorch lightning checkpoint or pytorch pickled state dict")
 parser.add_argument("net_config_path", type=str, help="Path to config.yaml file from pytorch-lightning trainig")
-parser.add_argument("activation_path", type=str, help="Path to config.yaml file with activation function")
+# parser.add_argument("activation_path", type=str, help="Path to config.yaml file with activation function")
 parser.add_argument("--processes", type=int, default=2, help="Number of processes for data loaders")
 parser.add_argument(
     "--override_plot_data", type=bool, default=False, help="Specifies if plotting data should be overridden"
@@ -40,10 +41,11 @@ parser.add_argument(
 )
 parser.add_argument("--rate", type=int, default=25, help="Number of likelihood estimation points")
 parser.add_argument("--batch_size", type=int, default=128)
+parser.add_argument("--in-memory", action="store_true", help="Whether to load dataset in memory")
 args = parser.parse_args()
 
-net = parse_net_class(args.net_config_path, args.activation_path)
-net = load_net(net, args.net_path, device=device)
+net = parse_net_class(args.net_config_path)
+net = load_net(net, args.net_path, device=device, lightning_model=("ckpt" in args.net_config_path))
 net.eval()
 
 save_dir = Path(args.net_path).parent
@@ -67,6 +69,8 @@ train_limit = 6000
 train_dataset.data = train_dataset.data[:train_limit]
 train_dataset.targets = train_dataset.targets[:train_limit]
 train_loader = torch.utils.data.DataLoader(train_dataset, **train_kwargs)
+if args.in_memory:
+    train_loader = [b for b in train_loader]
 
 original_parameters = parameters_to_vector(net.parameters()).detach().clone()
 
@@ -129,16 +133,15 @@ for layer_name, weights_indices in sampled_indices.items():
 
             windows[layer_name][weight_name] = (left_window, right_window)
 
-            for value in torch.linspace(
-                original_weight - left_window, original_weight + right_window, rate, device=device
+            for value in tqdm(
+                torch.linspace(original_weight - left_window, original_weight + right_window, rate, device=device),
+                desc=f"Weight {weight_idx+1}/{len(weights_indices)}",
             ):
-                print(".", end="")
                 net.state_dict()[layer_name][tuple(weight_idx)] = value
                 # modify_parameter(net, i, value)
                 ll, good = calculate_ll(train_loader, net, device)
                 df.append((value.item(), ll, good))
             net.state_dict()[layer_name][tuple(weight_idx)] = original_weight
-            print("")
 
         plot_data[layer_name][weight_name] = df
 

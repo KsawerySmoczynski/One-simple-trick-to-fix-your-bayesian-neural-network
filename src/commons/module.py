@@ -3,44 +3,49 @@ from typing import Any
 import torch
 from pytorch_lightning import LightningModule
 from torch import nn
-from torchmetrics.functional import accuracy
+from torchmetrics import Accuracy
 
-from src.commons.utils import initialize_object
+from src.metrics.classification import ExpectedCalibrationError
 
 
 class TrainingModule(LightningModule):
-    def __init__(self, model: nn.Module, criterion: nn.Module, optimizer: dict, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, model: nn.Module, optimizer_args: dict, n_classes: int, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.model = model
-        self.criterion = criterion
-        self.optimizer = optimizer
+        self.criterion = nn.CrossEntropyLoss()
+        self.optimizer_args = optimizer_args
+        self.optimizer = None
+        self.accuracy = Accuracy(num_classes=n_classes)
+        self.ece = ExpectedCalibrationError(num_classes=n_classes, input_type="none")
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.model(x)
 
     def training_step(self, batch, batch_idx):
         x, y = batch
-        y_hat = self.forward(x)
+        y_hat = self.forward(x).exp()
         loss = self.criterion(y_hat, y)
         self.log("train/loss", loss.item(), on_step=True, on_epoch=True)
-        self.log("train/accuracy", accuracy(y_hat, y), on_step=True, on_epoch=True)
+        self.log("train/accuracy", self.accuracy(y_hat, y), on_step=True, on_epoch=True)
+        self.log("train/ECE", self.ece(y_hat, y), on_step=True, on_epoch=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
-        y_hat = self(x)
+        y_hat = self(x).exp()
         loss = self.criterion(y_hat, y)
         self.log("validation/loss", loss.item(), on_epoch=True)
-        self.log("validation/accuracy", accuracy(y_hat, y), on_epoch=True)
+        self.log("validation/accuracy", self.accuracy(y_hat, y), on_epoch=True)
+        self.log("validation/ECE", self.ece(y_hat, y), on_epoch=True)
 
     def test_step(self, batch, batch_idx):
         x, y = batch
-        y_hat = self.forward(x)
+        y_hat = self.forward(x).exp()
         loss = self.criterion(y_hat, y)
         self.log("test/loss", loss.item(), on_epoch=True)
-        self.log("test/accuracy", accuracy(y_hat, y), on_epoch=True)
+        self.log("test/accuracy", self.accuracy(y_hat, y), on_epoch=True)
+        self.log("test/ECE", self.ece(y_hat, y), on_epoch=True)
 
     def configure_optimizers(self):
-        self.optimizer["init_args"]["params"] = self.model.parameters()
-        self.optimizer = initialize_object(self.optimizer)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), **self.optimizer_args)
         return self.optimizer

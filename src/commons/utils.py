@@ -26,7 +26,7 @@ def calculate_ll(train_loader, model, device):
         for data, target in train_loader:
             data, target = data.to(device), target.to(device)
             output = model(data)
-            test_loss += -F.nll_loss(F.log_softmax(output, dim=1), target, reduction="sum").item()
+            test_loss += -F.nll_loss(output, target, reduction="sum").item()
             pred = output.argmax(dim=1, keepdim=True)
             test_good += pred.eq(target.view_as(pred)).sum().item()
     return test_loss, test_good
@@ -160,32 +160,30 @@ def traverse_config_and_initialize(iterable: Union[Dict, List, Tuple]):
 def find_mass(net, layer, idx, val, train_loader, device):
     thres = 0.01
     mult = 1.1
-    init_window = 0.1
-    max_window = 10000
+    init_window = 1.5
+    max_window = 100
 
     logp, _ = calculate_ll(train_loader, net, device)
 
     right_window = init_window
     while right_window < max_window:
-        print(",", end="")
         new_val = val + right_window
         net.state_dict()[layer][tuple(idx)] = new_val
         ll, _ = calculate_ll(train_loader, net, device)
-
         if np.exp(ll - logp) < thres:
             break
-
         else:
             right_window *= 1.1
 
-    print("")
-
     left_window = init_window
     while left_window < max_window:
-        print(",", end="")
         new_val = val - left_window
         net.state_dict()[layer][tuple(idx)] = new_val
         ll, _ = calculate_ll(train_loader, net, device)
+        if np.exp(ll - logp) < thres:
+            break
+        else:
+            left_window *= 1.1
 
 
 def eval_early_stopping(early_stopping_epochs: int, no_improvement_epochs: int, improved: bool) -> int:

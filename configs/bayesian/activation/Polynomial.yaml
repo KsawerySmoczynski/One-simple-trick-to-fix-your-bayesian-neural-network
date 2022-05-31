@@ -1,0 +1,5 @@
+model:
+  model:
+    init_args:
+      activation:
+        class_path: src.models.activation.Parabola

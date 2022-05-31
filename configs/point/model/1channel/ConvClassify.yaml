@@ -1,0 +1,14 @@
+model:
+  model:
+    class_path: src.models.classification.ConvClassify
+    init_args:
+      in_size: 28
+      out_size: 10
+      in_channels: 1
+      activation:
+        class_path: torch.nn.LeakyReLU
+        init_args:
+          negative_slope: 0.1
+  optimizer_args:
+    lr: 0.001
+    betas: [0.9, 0.999]

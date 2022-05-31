@@ -15,7 +15,7 @@ class MNIST(DataModule):
         root: str = "datasets",
         train_ratio: float = 0.7,
         validation_ratio: float = 0.3,
-        dataloader_args: Dict = {},
+        dataloader_args: dict = {},
     ):
         super().__init__(train_batch_size, test_batch_size, root, train_ratio, validation_ratio, 0, dataloader_args)
         transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize([0.1307], [0.3081])])

@@ -1,0 +1,14 @@
+data:
+  dataset:
+    class_path: src.data.classification.CIFAR10
+    init_args:
+      train_batch_size: 128
+      test_batch_size: 128
+      root: datasets
+      train_ratio: 0.7
+      validation_ratio: 0.3
+      dataloader_args:
+        num_workers: 16
+        pin_memory: true
+        persistent_workers: true
+  n_classes: 10

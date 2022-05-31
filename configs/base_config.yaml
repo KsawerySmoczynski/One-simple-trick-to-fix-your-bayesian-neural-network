@@ -1,11 +1,13 @@
 seed_everything: 42
 trainer:
   logger: true
-  checkpoint_callback: true
+  enable_checkpointing: true
   callbacks:
     - class_path: pytorch_lightning.callbacks.model_checkpoint.ModelCheckpoint
-      monitor: val/loss
-  default_root_dir: null
+      init_args:
+        monitor: validation/accuracy
+        mode: max
+  default_root_dir: lightning_logs/FashionMNIST/ConvClassify-LeakyReLU_01
   gpus: 1
   log_gpu_memory: null
   max_epochs: 50
@@ -18,5 +20,4 @@ trainer:
   num_sanity_val_steps: 0
   resume_from_checkpoint: null
   profiler: null
-  deterministic: true
   stochastic_weight_avg: false
