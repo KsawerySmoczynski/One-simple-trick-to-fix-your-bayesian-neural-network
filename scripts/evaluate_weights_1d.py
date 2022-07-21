@@ -4,6 +4,7 @@ import json
 import os
 import random
 from argparse import ArgumentParser
+from itertools import chain
 from os.path import exists
 from pathlib import Path
 
@@ -18,10 +19,10 @@ from tqdm import tqdm
 
 from src.commons.io import load_net, parse_net_class
 from src.commons.plotting import plot_1d
-from src.commons.utils import calculate_ll, find_mass, modify_parameter
+from src.commons.utils import calculate_ll, find_mass, fit_N, modify_parameter
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
-SEED = 42
+SEED = 43
 
 torch.manual_seed(SEED)
 random.seed(SEED)
@@ -45,7 +46,7 @@ parser.add_argument("--in-memory", action="store_true", help="Whether to load da
 args = parser.parse_args()
 
 net = parse_net_class(args.net_config_path)
-net = load_net(net, args.net_path, device=device, lightning_model=("ckpt" in args.net_config_path))
+net = load_net(net, args.net_path, device=device, lightning_model=("ckpt" in args.net_path))
 net.eval()
 
 save_dir = Path(args.net_path).parent
@@ -65,7 +66,7 @@ if "FashionMNIST" in args.net_path:
 elif "MNIST" in args.net_path:
     train_dataset = datasets.MNIST("datasets", train=True, transform=transform, download=True)
 
-train_limit = 6000
+train_limit = 12000
 train_dataset.data = train_dataset.data[:train_limit]
 train_dataset.targets = train_dataset.targets[:train_limit]
 train_loader = torch.utils.data.DataLoader(train_dataset, **train_kwargs)
@@ -103,12 +104,12 @@ for layer_name, weights_indices in sampled_indices.items():
 
         df = None
 
-        if exists(plot_data_path) and not override_plot_data:
-            with open(plot_data_path) as f:
-                saved = json.load(f)
-                if layer_name in saved.keys() and weight_name in saved[layer_name].keys():
-                    print(f"Restoring saved data for {layer_name} {weight_name}")
-                    df = saved[layer_name][weight_name]
+        # if exists(plot_data_path) and not override_plot_data:
+        #     with open(plot_data_path) as f:
+        #         saved = json.load(f)
+        #         if layer_name in saved.keys() and weight_name in saved[layer_name].keys():
+        #             print(f"Restoring saved data for {layer_name} {weight_name}")
+        #             df = saved[layer_name][weight_name]
 
         if df is None:
             df = []
@@ -116,26 +117,56 @@ for layer_name, weights_indices in sampled_indices.items():
             # original_weight = original_parameters[i].item()
             # vector_to_parameters(original_parameters, net.parameters())
 
-            left_window = None
-            right_window = None
+            # if exists(windows_path) and not override_windows:
+            #     with open(windows_path, "r") as f:
+            #         saved = json.load(f)
+            #         if layer_name in saved.keys() and weight_name in saved[layer_name].keys():
+            #             print(f"Restoring saved windows for {layer_name} {weight_name}")
+            #             left_window, right_window = saved[layer_name][weight_name]
 
-            if exists(windows_path) and not override_windows:
-                with open(windows_path, "r") as f:
-                    saved = json.load(f)
-                    if layer_name in saved.keys() and weight_name in saved[layer_name].keys():
-                        print(f"Restoring saved windows for {layer_name} {weight_name}")
-                        left_window, right_window = saved[layer_name][weight_name]
+            # if left_window is None:
+            #     left_window, right_window = find_mass(
+            #         net, layer_name, weight_idx, original_weight, train_loader, device
+            #     )
+            for value1 in torch.linspace(original_weight - 10, original_weight + 10, int(rate / 4 + 1), device=device):
+                net.state_dict()[layer_name][tuple(weight_idx)] = value1
+                ll, good = calculate_ll(train_loader, net, device)
+                df.append((value1.cpu().item(), ll, good))
+            df = np.array(df)
+            good = df[:, 2].astype("float") / train_limit
+            logp = df[:, 1]
+            p_vector = np.exp(logp - np.max(logp))
+            val_vector = df[:, 0]
+            valid_values = p_vector > 1e-4
+            valid_inds = np.arange(len(valid_values))[valid_values]
+            ind_min, ind_max = np.max([0, valid_inds.min() - 1]), np.min([valid_inds.max() + 1, len(val_vector) - 1])
 
-            if left_window is None:
-                left_window, right_window = find_mass(
-                    net, layer_name, weight_idx, original_weight, train_loader, device
-                )
+            left_window = (
+                val_vector[ind_min] if val_vector[ind_min] < original_weight.cpu() else original_weight.cpu().item() - 2
+            )
+            right_window = (
+                val_vector[ind_max] if val_vector[ind_min] > original_weight.cpu() else original_weight.cpu().item() + 2
+            )
 
             windows[layer_name][weight_name] = (left_window, right_window)
+            df = []
+
+            distance = right_window - left_window
+            left_root_distance = ((original_weight.cpu() - left_window)) ** (1 / 2)
+            right_root_distance = (right_window - original_weight.cpu()) ** (1 / 2)
+            left_n_samples = int((original_weight.cpu() - left_window) / distance * rate)
+            right_n_samples = int((right_window - original_weight.cpu()) / distance * rate)
+            left_range = torch.linspace(
+                original_weight - left_root_distance, original_weight, left_n_samples, device=device
+            )
+            right_range = torch.linspace(
+                original_weight + 0.01, original_weight + right_root_distance, right_n_samples, device=device
+            )
+            xses = [x**2 * torch.sign(x) for x in chain(left_range, right_range)]
 
             for value in tqdm(
-                torch.linspace(original_weight - left_window, original_weight + right_window, rate, device=device),
-                desc=f"Weight {weight_idx+1}/{len(weights_indices)}",
+                xses,
+                desc=f"Weight {weight_idx}",
             ):
                 net.state_dict()[layer_name][tuple(weight_idx)] = value
                 # modify_parameter(net, i, value)

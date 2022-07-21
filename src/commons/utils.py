@@ -34,7 +34,7 @@ def calculate_ll(train_loader, model, device):
 
 def fit_N(x, p):
     dist = N()
-    optim = torch.optim.SGD(dist.parameters(), lr=0.4)
+    optim = torch.optim.SGD(dist.parameters(), lr=0.5)
     for _ in range(1000):
         optim.zero_grad()
         xt = torch.from_numpy(x)
@@ -160,7 +160,7 @@ def traverse_config_and_initialize(iterable: Union[Dict, List, Tuple]):
 def find_mass(net, layer, idx, val, train_loader, device):
     thres = 0.01
     mult = 1.1
-    init_window = 1.5
+    init_window = 0.1
     max_window = 100
 
     logp, _ = calculate_ll(train_loader, net, device)
@@ -170,20 +170,22 @@ def find_mass(net, layer, idx, val, train_loader, device):
         new_val = val + right_window
         net.state_dict()[layer][tuple(idx)] = new_val
         ll, _ = calculate_ll(train_loader, net, device)
-        if np.exp(ll - logp) < thres:
-            break
+        if np.exp((ll - logp)) < thres:
+            right_window *= mult
         else:
-            right_window *= 1.1
+            break
 
     left_window = init_window
     while left_window < max_window:
         new_val = val - left_window
         net.state_dict()[layer][tuple(idx)] = new_val
         ll, _ = calculate_ll(train_loader, net, device)
-        if np.exp(ll - logp) < thres:
-            break
+        if np.exp((ll - logp)) < thres:
+            left_window *= mult
         else:
-            left_window *= 1.1
+            break
+
+    return left_window, right_window
 
 
 def eval_early_stopping(early_stopping_epochs: int, no_improvement_epochs: int, improved: bool) -> int:

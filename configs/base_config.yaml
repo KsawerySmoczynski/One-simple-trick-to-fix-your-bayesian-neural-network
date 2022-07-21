@@ -7,7 +7,7 @@ trainer:
       init_args:
         monitor: validation/accuracy
         mode: max
-  default_root_dir: lightning_logs/FashionMNIST/ConvClassify-LeakyReLU_01
+  default_root_dir: lightning_logs/MNIST/ConvClassify-ReLU
   gpus: 1
   log_gpu_memory: null
   max_epochs: 50
