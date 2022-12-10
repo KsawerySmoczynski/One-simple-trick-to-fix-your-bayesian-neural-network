@@ -67,3 +67,12 @@ poetry install
 ```bash
 poetry run pre-commit install
 ```
+
+# Docker TODO
+
+Dockerfile created for developement purposes only, it's not fully operational as is.
+Requires manual sourcing the virtualenv as dependencies aren't installed to global python.
+Also requires installation of setuptools in version 59.5.0
+```
+poetry run pip install setuptools==59.5.0
+```
