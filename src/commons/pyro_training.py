@@ -86,6 +86,7 @@ def train_loop(
                     report_metrics(metrics, "test-epoch", e, writer)
             if early_stopping_epochs:
                 if early_stop:
+                    print("STOPPING EARLY")
                     break
 
     return model, guide
