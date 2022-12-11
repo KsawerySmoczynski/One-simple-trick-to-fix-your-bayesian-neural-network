@@ -1,8 +1,10 @@
 from argparse import ArgumentParser
 from datetime import datetime
+from functools import partial
 from pathlib import Path
 from typing import Dict
 
+import numpy as np
 import pyro
 import torch
 from pyro.infer import SVI, Predictive
@@ -54,6 +56,15 @@ def main(config: Dict, args):
 
     metrics = get_metrics(metrics_config, device)
 
+    # TODO -> get rid of
+    # to_hist, test_loader and save_predictions_config from train_loop
+    def to_hist(x, bins):
+        bins = torch.arange(bins)
+        match = x[:, :, None] == bins[None, :]
+        return match.sum(1) / x.shape[1]  # normalized
+
+    save_predictions_config = {"reduction": partial(to_hist, bins=10), "output_path": f"{workdir}/results.csv"}
+
     model, guide = train_loop(
         model.model,
         model.guide,
@@ -70,6 +81,8 @@ def main(config: Dict, args):
         args.monitor_metric,
         args.monitor_metric_mode,
         args.early_stopping_epochs,
+        test_loader,
+        save_predictions_config,
     )
 
     print("Testing bayesian model...")
