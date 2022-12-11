@@ -41,7 +41,7 @@ def train_loop(
     model,
     guide,
     train_loader: DataLoader,
-    test_loader: DataLoader,
+    valid_loader: DataLoader,
     svi: SVI,
     epochs: int,
     num_samples: int,
@@ -64,7 +64,7 @@ def train_loop(
         writer.add_scalar("train/loss-epoch", loss, e + 1)
         if (e + 1) % evaluation_interval == 0:
             predictive = Predictive(model, guide=guide, num_samples=num_samples, return_sites=("obs",))
-            evaluation(predictive, test_loader, metrics, device)
+            evaluation(predictive, valid_loader, metrics, device)
             if monitor_metric:
                 current_monitor_metric_value = metrics[monitor_metric].compute().cpu()
                 improved = monitor_metric_improvement(
