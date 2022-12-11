@@ -41,7 +41,7 @@ def train_loop(
     model,
     guide,
     train_loader: DataLoader,
-    test_loader: DataLoader,
+    valid_loader: DataLoader,
     svi: SVI,
     epochs: int,
     num_samples: int,
@@ -72,7 +72,7 @@ def train_loop(
                     "_RETURN",
                 ),
             )
-            evaluation(predictive, test_loader, metrics, device)
+            evaluation(predictive, valid_loader, metrics, device)
             if monitor_metric:
                 current_monitor_metric_value = metrics[monitor_metric].compute().cpu()
                 improved = monitor_metric_improvement(

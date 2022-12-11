@@ -21,20 +21,10 @@ COPY poetry.lock pyproject.toml /src/ /app/
 WORKDIR app
 
 RUN  \
-<<<<<<< HEAD
     --mount=type=cache,target=/root/.cache/pypoetry/cache \
     --mount=type=cache,target=/root/.cache/pypoetry/artifacts \
-=======
-    # --mount=type=cache,target=/home/.cache/pypoetry/cache \
-    # --mount=type=cache,target=/home/.cache/pypoetry/artifacts \
->>>>>>> c712b8e (feature: Add dockerfile)
     poetry install --no-root
 
 RUN poetry run pip install setuptools==59.5.0
 
 COPY . .
-<<<<<<< HEAD
-=======
-
-RUN poetry install --only-root
->>>>>>> c712b8e (feature: Add dockerfile)
