@@ -2,3 +2,11 @@ metrics:
   - class_path: src.metrics.regression.RootMeanSquaredError
     init_args:
       input_type: samples
+  - class_path: src.metrics.regression.PCIP
+    init_args:
+      input_type: none
+      percentile: 80
+  - class_path: src.metrics.regression.MPIW
+    init_args:
+      input_type: none
+      percentile: 80

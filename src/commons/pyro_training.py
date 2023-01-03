@@ -57,37 +57,40 @@ def train_loop(
     test_loader: DataLoader = None,
     save_predictions_config: DataLoader = None,
 ) -> Tuple[PyroModule, PyroModule]:
+    result_file = workdir / "results.txt"
     if monitor_metric:
         best_monitor_metric_value = get_monitored_metric_init_val(monitor_metric_mode)
     if early_stopping_epochs:
         no_improvement_epochs = 0
     for e in range(epochs):
-        loss = training(svi, train_loader, e, writer, device)
-        writer.add_scalar("train/loss-epoch", loss, e + 1)
-        if (e + 1) % evaluation_interval == 0:
-            predictive = Predictive(model, guide=guide, num_samples=num_samples, return_sites=("obs",))
-            evaluation(predictive, valid_loader, metrics, device)
-            if monitor_metric:
-                current_monitor_metric_value = metrics[monitor_metric].compute().cpu()
-                improved = monitor_metric_improvement(
-                    best_monitor_metric_value, current_monitor_metric_value, monitor_metric_mode
-                )
-                if improved:
-                    save_param_store(workdir)
-                    best_monitor_metric_value = current_monitor_metric_value
-                if early_stopping_epochs:
-                    early_stop, no_improvement_epochs = eval_early_stopping(
-                        early_stopping_epochs, no_improvement_epochs, improved
+        with open(result_file, 'a') as res_file:
+            res_file.write(f"EPOCH: {e + 1} \n")
+            loss = training(svi, train_loader, e, writer, device)
+            writer.add_scalar("train/loss-epoch", loss, e + 1)
+            if (e + 1) % evaluation_interval == 0:
+                predictive = Predictive(model, guide=guide, num_samples=num_samples, return_sites=("obs",))
+                evaluation(predictive, valid_loader, metrics, device)
+                if monitor_metric:
+                    current_monitor_metric_value = metrics[monitor_metric].compute().cpu()
+                    improved = monitor_metric_improvement(
+                        best_monitor_metric_value, current_monitor_metric_value, monitor_metric_mode
                     )
-            report_metrics(metrics, "evaluation", e, writer)
-            if monitor_metric and test_loader and save_predictions_config:
-                if improved:
-                    evaluation(predictive, test_loader, metrics, device, save_predictions_config)
-                    report_metrics(metrics, "test-epoch", e, writer)
-            if early_stopping_epochs:
-                if early_stop:
-                    print("STOPPING EARLY")
-                    break
+                    if improved:
+                        save_param_store(workdir)
+                        best_monitor_metric_value = current_monitor_metric_value
+                    if early_stopping_epochs:
+                        early_stop, no_improvement_epochs = eval_early_stopping(
+                            early_stopping_epochs, no_improvement_epochs, improved
+                        )
+                report_metrics(metrics, "evaluation", e, writer, res_file)
+                if monitor_metric and test_loader and save_predictions_config:
+                    if improved:
+                        evaluation(predictive, test_loader, metrics, device, save_predictions_config)
+                        report_metrics(metrics, "test-epoch", e, writer, res_file)
+                if early_stopping_epochs:
+                    if early_stop:
+                        print("STOPPING EARLY")
+                        break
 
     return model, guide
 

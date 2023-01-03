@@ -1,0 +1,16 @@
+model:
+  model:
+    class_path: src.models.regression.MLERegression
+    init_args:
+      in_size: 8
+      hidden_size: 100
+      out_size: 1
+  mean: 0. #MUST BE FLOATS OTHERWISE RESULT IN ERRORS
+  std: 1. #MUST BE FLOATS OTHERWISE RESULT IN ERRORS
+  sigma_bound: 30.0
+  optimizer:
+    class_path: pyro.optim.Adam
+    init_args:
+      - {lr: 0.001, betas: [0.9, 0.999]}
+  criterion:
+    class_path: pyro.infer.Trace_ELBO

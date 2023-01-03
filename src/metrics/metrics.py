@@ -35,6 +35,14 @@ def _calculate_confidence_interval(percentile: float, y_pred: np.array):
     return y_l, y_u
 
 
+# version for CUDA tensors
+def confidence_interval(percentile: float, y_pred: np.array):
+    assert 0.0 < percentile < 100.0, "percentile must be between 0 and 100"
+    marigin = (100 - percentile) / 2.0
+    y_l = torch.quantile(y_pred, marigin / 100, axis=1)
+    y_u = torch.quantile(y_pred, 1 - marigin / 100, axis=1)
+    return y_l, y_u
+
 def bin_metric(y_true, y_pred):
     """
     :param y_true: tensor with true values. Dimensions: batch_size

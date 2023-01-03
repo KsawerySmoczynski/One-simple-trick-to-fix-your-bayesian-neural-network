@@ -14,6 +14,7 @@ from torch.utils.tensorboard import SummaryWriter
 from src.commons.io import load_config, load_param_store, print_command, save_config
 from src.commons.logging import save_metrics
 from src.commons.pyro_training import evaluation, to_bayesian_model, train_loop
+from src.models import CLASSIFICATION_MODELS, REGRESSION_MODELS
 from src.commons.utils import (
     get_configs,
     get_metrics,
@@ -48,8 +49,9 @@ def main(config: Dict, args):
     dataset_name = str(datamodule)
     model_name = str(model.model)
     activation_name = str(model.model.model.activation)
+    seed_name = str(training_config["seed"])
 
-    workdir = args.workdir / dataset_name / model_name / activation_name / datetime.now().strftime("%H:%M")
+    workdir = args.workdir / dataset_name / model_name / activation_name / seed_name / datetime.now().strftime("%H:%M")
     workdir.mkdir(parents=True, exist_ok=True)
     save_config(config, workdir / "config.yaml")
     writer = SummaryWriter(workdir)
@@ -110,8 +112,10 @@ def main(config: Dict, args):
                 X = X.to(device)
                 y = y.to(device)
                 out = net(X)
+                if model.model.__class__ in CLASSIFICATION_MODELS:
+                    out = out.exp()
                 for metric in point_estimate_metrics.values():
-                    metric.update(out.exp(), y.to(device))
+                    metric.update(out, y.to(device))
         print("Saving point-estimate model...")
         point_estimate_metrics_path = workdir / "point_estimate_metrics.csv"
         model_path = workdir / "point_estimate_params.pt"
@@ -130,6 +134,7 @@ def main(config: Dict, args):
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--config", nargs="*", type=str, help="Path to yaml with config")
+    # parser.add_argument("--task-type", type=str, help="Regression or Classification")
     parser.add_argument(
         "--num-samples", type=int, default=100, help="How many samples should pyro use during prediction phase"
     )
@@ -141,6 +146,8 @@ if __name__ == "__main__":
     )
     parser.add_argument("--workdir", type=Path, default=Path("logs"), help="Path to store training artifacts")
     parser.add_argument("--test-point-estimate", action="store_true")
+    parser.add_argument("--seed", type=int, help="seed for randomization")
+    parser.add_argument("--lr", type=float, help="learning rate for training")
     args = parser.parse_args()
     metrics_valid = not (bool(args.monitor_metric) ^ bool(args.monitor_metric_mode))
     assert (
@@ -151,14 +158,15 @@ if __name__ == "__main__":
         assert (
             bool(args.monitor_metric) and bool(args.monitor_metric_mode) and args.early_stopping_epochs
         ), "Both metric to monitor and it's mode have to be set up while using early stopping"
-    args.workdir = args.workdir / datetime.now().strftime("%Y%m%d")
+    # args.workdir = args.workdir / datetime.now().strftime("%Y%m%d")
     config = load_config(args.config)
-    model_config, data_config, metrics_config, training_config = get_configs(config)
+
+    if args.seed is not None:
+        config["seed_everything"] = args.seed
+
+    if args.lr is not None:
+        config["model"]["optimizer"]["init_args"][0]["lr"] = args.lr
+
     print_command()
-
-    # Will be moved
-    training_config["num_samples"] = args.num_samples
-
-    seed_everything(training_config["seed"])
 
     main(config, args)

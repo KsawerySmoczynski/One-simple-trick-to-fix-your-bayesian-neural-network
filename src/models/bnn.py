@@ -68,11 +68,12 @@ class BNNClassification(BNN):
 
 
 class BNNRegression(BNN):
-    def __init__(self, model: nn.Module, mean: torch.Tensor, std: torch.Tensor):
+    def __init__(self, model: nn.Module, mean: torch.Tensor, std: torch.Tensor, sigma_bound: torch.Tensor):
         super().__init__(model, mean, std)
+        self.sigma_bound = sigma_bound
 
     def forward(self, X, y=None):
-        sigma = pyro.sample("sigma", dist.Uniform(torch.tensor(0.0, device=self.std.device), self.std))
+        sigma = pyro.sample("sigma", dist.Uniform(torch.tensor(0.0, device=self.std.device), self.sigma_bound))
         mean = self.model(X)
         with pyro.plate("data", X.shape[0]):
             obs = pyro.sample("obs", dist.Normal(self.mean, sigma), obs=y)

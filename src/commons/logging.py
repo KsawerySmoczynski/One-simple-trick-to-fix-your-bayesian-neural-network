@@ -5,8 +5,9 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 
-def report_metrics(metrics: Dict, stage: str, epoch: int, writer: SummaryWriter, reset: bool = True) -> None:
+def report_metrics(metrics: Dict, stage: str, epoch: int, writer: SummaryWriter, res_file, reset: bool = True) -> None:
     for metric_name, metric in metrics.items():
+        res_file.write(f"{stage} {metric_name} {round(float(metric.compute()), 3)} \n")
         writer.add_scalar(f"{stage}/{metric_name}", metric.compute(), epoch)
         if reset:
             metric.reset()
