@@ -7,7 +7,7 @@ model:
       out_size: 1
   mean: 0. #MUST BE FLOATS OTHERWISE RESULT IN ERRORS
   std: 1. #MUST BE FLOATS OTHERWISE RESULT IN ERRORS
-  sigma_bound: 30.0
+  sigma_bound: 5.0
   optimizer:
     class_path: pyro.optim.Adam
     init_args:

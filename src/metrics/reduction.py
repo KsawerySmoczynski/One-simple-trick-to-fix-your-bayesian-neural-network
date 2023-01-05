@@ -44,7 +44,7 @@ class ClassificationReductionMixin(ReductionMixin):
 class RegressionReductionMixin(ReductionMixin):
     def _get_reduction(self, input_type: str):
         if input_type == "samples":
-            return lambda x: x.mean(dim=1)  # batch_size x n_samples
+            return lambda x: x.mean(dim=len(x.shape) -1)  # batch_size x n_samples
         elif input_type == "none":
             return lambda x: x
 

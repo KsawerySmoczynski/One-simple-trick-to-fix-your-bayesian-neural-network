@@ -131,4 +131,7 @@ def evaluation(
             with open(Path(save_predictions_config["output_path"]), "ab") as pred_file:
                 np.savetxt(pred_file, np.c_[indices, predictions])
         for metric in metrics.values():
+            if len(y.shape) > 1:
+                # UNet case
+                out = torch.permute(out, (3, 2, 1, 0, 4))
             metric.update(out, y)

@@ -9,4 +9,8 @@ CLASSIFICATION_MODELS = [
     classification.LogisticRegression,
     classification.ResNet18,
 ]
-REGRESSION_MODELS = [regression.MLERegression]
+
+REGRESSION_MODELS = [
+	regression.MLERegression,
+	regression.UNet,
+]
