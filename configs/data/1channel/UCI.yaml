@@ -1,8 +1,9 @@
 data:
-  class_path: src.data.regression.CaliforniaHousing
+  class_path: src.data.regression.UCI
   init_args:
-    train_batch_size: 128
-    test_batch_size: 128
+    name: 'energy'
+    train_batch_size: 32
+    test_batch_size: 32
     train_ratio: 0.8
     validation_ratio: 0.2
     dataloader_args:

@@ -7,6 +7,8 @@ from typing import Dict
 import numpy as np
 import pyro
 import torch
+from torch import nn
+import math
 from pyro.infer import SVI, Predictive
 from torch.nn.utils import vector_to_parameters
 from torch.utils.tensorboard import SummaryWriter
@@ -14,7 +16,6 @@ from torch.utils.tensorboard import SummaryWriter
 from src.commons.io import load_config, load_param_store, print_command, save_config
 from src.commons.logging import save_metrics
 from src.commons.pyro_training import evaluation, to_bayesian_model, train_loop
-from src.models import CLASSIFICATION_MODELS, REGRESSION_MODELS
 from src.commons.utils import (
     get_configs,
     get_metrics,
@@ -31,6 +32,7 @@ def main(config: Dict, args):
     device = torch.device("cuda") if (training_config["gpus"] != 0) else torch.device("cpu")
     epochs = training_config["max_epochs"]
     point_estimate_model_config = {**model_config["model"]}
+    net = traverse_config_and_initialize(model_config["model"])
     model_config["model"] = traverse_config_and_initialize(model_config["model"])
     model = to_bayesian_model(**model_config, device=device)
     optimizer = traverse_config_and_initialize(model_config["optimizer"])
@@ -41,6 +43,8 @@ def main(config: Dict, args):
     train_loader = datamodule.train_dataloader()
     validation_loader = datamodule.validation_dataloader()
     test_loader = datamodule.test_dataloader()
+
+    print(len(train_loader), len(validation_loader), len(test_loader))
 
     metrics = get_metrics(metrics_config, device)
     if args.monitor_metric and not args.monitor_metric in metrics:
@@ -66,6 +70,49 @@ def main(config: Dict, args):
         return match.sum(1) / x.shape[1]  # normalized
 
     save_predictions_config = {"reduction": partial(to_hist, bins=10), "output_path": f"{workdir}/results.csv"}
+
+    print(args.deterministic_training)
+    print(args.task)
+    
+    if args.task == 'regression' and args.deterministic_training:
+        deterministic_path = workdir / "deterministic_results.txt"
+        
+        criterion = nn.MSELoss() 
+        optimizer = torch.optim.Adam(net.parameters()) 
+        net.cuda()
+        
+        print("DETERMINISTIC TRAINING")
+        for epoch in range(50):
+            with open(deterministic_path, 'a') as f:
+                net.eval()
+                eval_losses = []
+                for inputs, labels in validation_loader:
+                    inputs = inputs.float().cuda()
+                    labels = labels.float().cuda()
+                    outputs = net(inputs)
+
+                    eval_losses.append(((outputs - labels)**2).mean())
+
+                f.write(f"Validation RMSE: {math.sqrt(sum(eval_losses) / len(validation_loader))}\n")
+
+                print(f"EPOCH: {epoch + 1}")
+  
+                net.train()
+                f.write(f"Epoch: {epoch + 1}\n")
+                train_losses = []
+                for inputs, labels in train_loader:
+                    inputs = inputs.float().cuda()
+                    labels = labels.float().cuda()
+                    optimizer.zero_grad()
+                 
+                    outputs = net(inputs)
+                    loss = criterion(outputs, labels)
+                    loss.backward()
+                    optimizer.step()
+                 
+                    train_losses.append(loss.item())
+
+                f.write(f"Tain RMSE: {math.sqrt(sum(train_losses) / len(train_loader))}\n")
 
     model, guide = train_loop(
         model.model,
@@ -112,7 +159,7 @@ def main(config: Dict, args):
                 X = X.to(device)
                 y = y.to(device)
                 out = net(X)
-                if model.model.__class__ in CLASSIFICATION_MODELS:
+                if args.task == 'classification':
                     out = out.exp()
                 for metric in point_estimate_metrics.values():
                     metric.update(out, y.to(device))
@@ -146,6 +193,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--workdir", type=Path, default=Path("logs"), help="Path to store training artifacts")
     parser.add_argument("--test-point-estimate", action="store_true")
+    parser.add_argument("--deterministic-training", action="store_true")
     parser.add_argument("--seed", type=int, help="seed for randomization")
     parser.add_argument("--lr", type=float, help="learning rate for training")
     args = parser.parse_args()
@@ -160,6 +208,11 @@ if __name__ == "__main__":
         ), "Both metric to monitor and it's mode have to be set up while using early stopping"
     # args.workdir = args.workdir / datetime.now().strftime("%Y%m%d")
     config = load_config(args.config)
+
+    if 'regression' in config['model']['model']['class_path']:
+        args.task = 'regression'
+    elif 'classification' in config['model']['model']['class_path']:
+        args.task = 'classification'
 
     if args.seed is not None:
         config["seed_everything"] = args.seed

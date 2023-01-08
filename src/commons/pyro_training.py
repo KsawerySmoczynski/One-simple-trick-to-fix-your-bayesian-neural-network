@@ -121,6 +121,11 @@ def evaluation(
             with open(Path(save_predictions_config["output_path"]), "w") as f:
                 f.write("")
     for idx, (X, y) in tqdm(enumerate(dataloader), desc=f"Evaluation", miniters=10):
+        if not np.isfinite(np.array(X)).all():
+            print("WARNING: INF IN DATA")
+            X[X == float("-INF")] = 0
+            X[X == float("INF")] = 0
+            
         y = y.to(device)
         out = predictive(X.to(device))["obs"].T
         if save_predictions_config:

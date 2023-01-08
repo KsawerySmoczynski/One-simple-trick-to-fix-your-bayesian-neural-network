@@ -5,6 +5,7 @@ from torch.utils.data import Dataset
 from src.data.datamodule import DataModule
 from torchvision import transforms
 from typing import Dict
+import math
 
 class CaliforniaHousingDataset(Dataset):
     def __init__(self, transform=None, target_transform=None, train: bool = True, ratio: float = 0.8):
@@ -24,7 +25,7 @@ class CaliforniaHousingDataset(Dataset):
         self.targets_std = self.targets.std(dim=0)
 
         print(self.data.shape)
-        print (f"NAIVE MODEL RMSE: {((self.targets_mean - self.targets)**2).sum().sqrt()}")
+        print(self.targets_mean)
 
         # TODO Apply normalization transforms with values from sample on train and from population on test
         self.transform = transform or (lambda x: ((x - self.data_mean) / self.data_std))
@@ -52,6 +53,14 @@ class CaliforniaHousing(DataModule):
         
         self.train_dataset = CaliforniaHousingDataset(train = True, ratio = train_ratio)
         self.test_dataset = CaliforniaHousingDataset(train = False, ratio = validation_ratio)
+
+        sse = 0
+        for _, y in self.test_dataset:
+            sse += y**2
+
+        rmse = math.sqrt(sse/len(self.test_dataset))
+
+        print(f"NAIVE RMSE: {rmse}")
 
         self.train_sampler, self.validation_sampler = self._get_train_val_test_samplers(
             len(self.train_dataset), train_ratio, validation_ratio
