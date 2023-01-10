@@ -6,7 +6,7 @@ trainer:
     - class_path: pytorch_lightning.callbacks.model_checkpoint.ModelCheckpoint
       monitor: val/loss
   default_root_dir: null
-  gpus: 1
+  device: "cuda:0"
   log_gpu_memory: null
   max_epochs: 50
   limit_train_batches: 1.0
