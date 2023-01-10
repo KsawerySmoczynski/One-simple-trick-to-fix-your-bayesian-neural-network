@@ -139,4 +139,6 @@ def evaluation(
             if len(y.shape) > 1:
                 # UNet case
                 out = torch.permute(out, (3, 2, 1, 0, 4))
+
+            # print(y.shape, out.shape)
             metric.update(out, y)

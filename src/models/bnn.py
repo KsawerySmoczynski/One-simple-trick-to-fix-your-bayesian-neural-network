@@ -75,8 +75,9 @@ class BNNRegression(BNN):
     def forward(self, X, y=None):
         sigma = pyro.sample("sigma", dist.Uniform(torch.tensor(0.0, device=self.std.device), self.sigma_bound))
         mean = self.model(X)
+        # print(mean.shape)
 
-        if len(mean.shape) > 1:
+        if len(mean.shape) > 3:
             # UNet case, we assume each depth has independent distribution due to complexity reasons
             with pyro.plate("batch"):
                 with pyro.plate("channels"):        

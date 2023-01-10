@@ -16,8 +16,11 @@ class MPIW(RegressionReductionMixin, Metric):
         return
 
     def update(self, preds: torch.Tensor, target: torch.Tensor) -> None:
+        # print(preds.shape)
         preds = self.reduction(preds)
+        # print(preds[0])
         lower, upper = confidence_interval(self.percentile, preds)
+        # print(upper, lower)
         self.total_length += (upper - lower).sum()
         self.total += target.shape[0]
 
