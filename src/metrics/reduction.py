@@ -1,4 +1,5 @@
 import abc
+from functools import partial
 
 import torch
 
@@ -28,11 +29,22 @@ class ClassificationReductionMixin(ReductionMixin):
         assert hasattr(self, "classes"), "Object has to have classes vector assigned"
 
         def reduce_samples(preds: torch.Tensor):
-            summed_classes = (preds[:, :, None] == self.classes[None, None, :]).sum(1)  # batch_size x n_samples x class
-            return summed_classes / preds.shape[1]
+            summed_classes = (preds.T[:, :, None] == self.classes[None, None, :]).sum(
+                1
+            )  # batch_size x n_samples x class
+            return summed_classes / preds.T.shape[1]  # batch_size x probability
+
+        def reduce_probabilities(preds: torch.Tensor):
+            """
+            in: probabilities x batch_size x n_samples
+            out: batch_size x probabilites
+            """
+            return torch.mean(preds, dim=0)
 
         if input_type == "samples":
-            return reduce_samples
+            return reduce_samples  # n_samples x batch_size
+        if input_type == "probabilities":
+            return reduce_probabilities  # n_samples x batch_size x probabilities
         elif input_type == "none":
             return lambda x: x
 

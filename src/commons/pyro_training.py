@@ -63,7 +63,15 @@ def train_loop(
         loss = training(svi, train_loader, e, writer, device)
         writer.add_scalar("train/loss-epoch", loss, e + 1)
         if (e + 1) % evaluation_interval == 0:
-            predictive = Predictive(model, guide=guide, num_samples=num_samples, return_sites=("obs",))
+            predictive = Predictive(
+                model,
+                guide=guide,
+                num_samples=num_samples,
+                return_sites=(
+                    "obs",
+                    "_RETURN",
+                ),
+            )
             evaluation(predictive, test_loader, metrics, device)
             if monitor_metric:
                 current_monitor_metric_value = metrics[monitor_metric].compute().cpu()
@@ -105,6 +113,8 @@ def training(svi: SVI, train_loader: Iterator, epoch: int, writer: SummaryWriter
 def evaluation(predictive: Predictive, dataloader: Iterator, metrics: Dict, device: torch.DeviceObjType):
     for X, y in tqdm(dataloader, desc=f"Evaluation", miniters=10):
         y = y.to(device)
-        out = predictive(X.to(device))["obs"].T
+        out = predictive(X.to(device))[
+            "_RETURN"
+        ]  # change to "obs" if you want to obtain observations instead of probabilities
         for metric in metrics.values():
             metric.update(out, y)
