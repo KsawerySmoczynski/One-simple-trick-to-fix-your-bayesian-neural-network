@@ -104,7 +104,11 @@ class UCIDataset(Dataset):
 
         # print(self.data)
 
-        print ("Data shape")
+        if train:
+            print("Train data shape")
+        else:
+            print ("Test data shape")
+        
         print(self.data.shape)
         print(self.targets.shape)
 
