@@ -63,7 +63,7 @@ def train_loop(
     if early_stopping_epochs:
         no_improvement_epochs = 0
     for e in range(epochs):
-        with open(result_file, 'a') as res_file:
+        with open(result_file, "a") as res_file:
             res_file.write(f"EPOCH: {e + 1} \n")
             loss = training(svi, train_loader, e, writer, device)
             writer.add_scalar("train/loss-epoch", loss, e + 1)
@@ -97,9 +97,7 @@ def train_loop(
 
 def training(svi: SVI, train_loader: Iterator, epoch: int, writer: SummaryWriter, device: torch.DeviceObjType):
     loss = 0
-    for idx, (X, y) in tqdm(
-        enumerate(train_loader), total=len(train_loader), desc=f"Training epoch {epoch}", miniters=10
-    ):
+    for idx, (X, y) in enumerate(train_loader):
         X = X.to(device)
         y = y.to(device)
         step_loss = svi.step(X, y)
@@ -120,12 +118,12 @@ def evaluation(
         if Path(save_predictions_config["output_path"]).exists():
             with open(Path(save_predictions_config["output_path"]), "w") as f:
                 f.write("")
-    for idx, (X, y) in tqdm(enumerate(dataloader), desc=f"Evaluation", miniters=10):
+    for idx, (X, y) in enumerate(dataloader):
         if not np.isfinite(np.array(X)).all():
             print("WARNING: INF IN DATA")
             X[X == float("-INF")] = 0
             X[X == float("INF")] = 0
-            
+
         y = y.to(device)
         out = predictive(X.to(device))["obs"].T
         if save_predictions_config:
