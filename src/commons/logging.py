@@ -38,11 +38,14 @@ def save_metrics(
     activation_name: str,
     writer: SummaryWriter = None,
     stage: str = None,
+    epoch: int = 0,
 ) -> None:
     with open(metrics_path, "w") as f:
-        f.write("dataset,model,activation,metric,metric_value\n")
+        f.write("dataset,model,activation,epoch,metric,metric_value\n")
         for metric_name, metric in metrics.items():
-            metric_readout = f"{dataset_name},{model_name},{activation_name},{metric_name},{metric.compute():.4f}\n"
+            metric_readout = (
+                f"{dataset_name},{model_name},{activation_name},{epoch},{metric_name},{metric.compute().cpu():.4f}\n"
+            )
             if writer and stage:
-                writer.add_scalar(f"{stage}/{metric_name}", metric.compute(), 0)
+                writer.add_scalar(f"{stage}/{metric_name}", metric.compute(), epoch)
             f.write(metric_readout)

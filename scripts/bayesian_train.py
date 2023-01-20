@@ -7,6 +7,7 @@ from typing import Dict
 
 import pyro
 import torch
+import torch.nn.functional as F
 import tyxe
 from pyro import distributions as dist
 from pyro.infer import SVI, Predictive
@@ -14,6 +15,7 @@ from torch.nn.utils import vector_to_parameters
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
+from src.commons.callbacks import EarlyStopping
 from src.commons.io import load_config, load_param_store, print_command, save_config
 from src.commons.logging import report_metrics, save_metrics
 from src.commons.pyro_training import evaluation, to_bayesian_model, train_loop
@@ -58,6 +60,8 @@ def main(config: Dict, args):
     test_loader = datamodule.test_dataloader()
 
     metrics = get_metrics(metrics_config, device)
+    test_metrics = get_metrics(metrics_config, device)
+
     if args.monitor_metric and not args.monitor_metric in metrics:
         raise AttributeError(f"{args.monitor_metric} metric wasn't initialized check configs")
 
@@ -72,18 +76,39 @@ def main(config: Dict, args):
     bayesian_metrics_path = workdir / "bayesian_metrics.csv"
 
     pbar = tqdm(total=epochs, unit="Epochs")
+    early_stopping = EarlyStopping(args.monitor_metric, args.early_stopping_epochs, path=workdir)
 
     def callback(_i, _ii, e):
         _i.net.eval()
-        for X, y in tqdm(validation_loader, desc=f"Evaluation", miniters=10):
-            y = y.to(device)
-            out = _i.predict(X.to(device), num_predictions=args.num_samples, aggregate=False)
-            # nsamples x batch size x classes => batch size x nsamples
-            out = out.transpose(1, 0).exp().argmax(2)
-            for metric in metrics.values():
-                metric.update(out, y)
-        report_metrics(metrics, "evaluation", _ii, writer)
-        pbar.update()
+        with torch.no_grad():
+            for X, y in tqdm(validation_loader, desc=f"Evaluation", miniters=10):
+                y = y.to(device)
+                out = _i.predict(X.to(device), num_predictions=args.num_samples, aggregate=False)
+                # nsamples x batch size x classes
+                for metric in metrics.values():
+                    metric.update(F.softmax(out, dim=2), y)
+            early_stopping(metrics)
+            report_metrics(metrics, "evaluation", _ii, writer)
+            pbar.update()
+            if early_stopping.early_stop or _ii + 1 >= epochs:
+                print(early_stopping.early_stop)
+                for X, y in tqdm(test_loader, desc=f"test", miniters=10):
+                    y = y.to(device)
+                    out = bnn.predict(X.to(device), num_predictions=args.num_samples, aggregate=False)
+                    # nsamples x batch size x classes
+                    for metric in test_metrics.values():
+                        metric.update(F.softmax(out, dim=2), y)
+                save_metrics(
+                    bayesian_metrics_path,
+                    test_metrics,
+                    dataset_name,
+                    model_name,
+                    activation_name,
+                    writer,
+                    stage="test",
+                    epoch=_ii,
+                )
+                sys.exit()
         _i.net.train()
 
     obs.dataset_size = len(train_loader.sampler)
@@ -91,17 +116,6 @@ def main(config: Dict, args):
     # with tyxe.poutine.local_reparameterization():
     bnn.fit(train_loader, optim, epochs, device=device, callback=callback)
     pbar.close()
-
-    bnn.eval()
-    metrics = get_metrics(metrics_config, device)
-    for X, y in tqdm(test_loader, desc=f"test", miniters=10):
-        y = y.to(device)
-        out = bnn.predict(X.to(device), num_predictions=args.num_samples, aggregate=False)
-        # nsamples x batch size x classes => batch size x nsamples
-        out = out.transpose(1, 0).exp().argmax(2)
-        for metric in metrics.values():
-            metric.update(out, y)
-    save_metrics(bayesian_metrics_path, metrics, dataset_name, model_name, activation_name, writer, stage="test")
 
     sys.exit(0)
 
