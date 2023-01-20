@@ -58,12 +58,7 @@ def main(config: Dict, args):
 
     # TODO -> get rid of
     # to_hist, test_loader and save_predictions_config from train_loop
-    def to_hist(x, bins):
-        bins = torch.arange(bins)
-        match = x[:, :, None] == bins[None, :]
-        return match.sum(1) / x.shape[1]  # normalized
-
-    save_predictions_config = {"reduction": partial(to_hist, bins=10), "output_path": f"{workdir}/results.csv"}
+    save_predictions_config = {"reduction": partial(torch.mean, dim=0), "output_path": f"{workdir}/results.csv"}
 
     model, guide = train_loop(
         model.model,
@@ -95,35 +90,36 @@ def main(config: Dict, args):
     evaluation(predictive, test_loader, metrics, device)
     save_metrics(bayesian_metrics_path, metrics, dataset_name, model_name, activation_name, writer, stage="test")
 
-    print("Testing point-estimate model...")
-    for metric in metrics_config:
-        metric["init_args"]["input_type"] = "none"
-    point_estimate_metrics = get_metrics(metrics_config, device)
+    if args.test_point_estimate:
+        print("Testing point-estimate model...")
+        for metric in metrics_config:
+            metric["init_args"]["input_type"] = "none"
+        point_estimate_metrics = get_metrics(metrics_config, device)
 
-    net = traverse_config_and_initialize(point_estimate_model_config)
-    net.to(device)
-    vector_to_parameters(guide.loc, net.parameters())
-    net.eval()
-    with torch.no_grad():
-        for X, y in test_loader:
-            X = X.to(device)
-            y = y.to(device)
-            out = net(X)
-            for metric in point_estimate_metrics.values():
-                metric.update(out.exp(), y.to(device))
-    print("Saving point-estimate model...")
-    point_estimate_metrics_path = workdir / "point_estimate_metrics.csv"
-    model_path = workdir / "point_estimate_params.pt"
-    save_metrics(
-        point_estimate_metrics_path,
-        point_estimate_metrics,
-        dataset_name,
-        model_name,
-        activation_name,
-        writer,
-        stage="point_estimate",
-    )
-    torch.save(net.state_dict(), model_path)
+        net = traverse_config_and_initialize(point_estimate_model_config)
+        net.to(device)
+        vector_to_parameters(guide.loc, net.parameters())
+        net.eval()
+        with torch.no_grad():
+            for X, y in test_loader:
+                X = X.to(device)
+                y = y.to(device)
+                out = net(X)
+                for metric in point_estimate_metrics.values():
+                    metric.update(out.exp(), y.to(device))
+        print("Saving point-estimate model...")
+        point_estimate_metrics_path = workdir / "point_estimate_metrics.csv"
+        model_path = workdir / "point_estimate_params.pt"
+        save_metrics(
+            point_estimate_metrics_path,
+            point_estimate_metrics,
+            dataset_name,
+            model_name,
+            activation_name,
+            writer,
+            stage="point_estimate",
+        )
+        torch.save(net.state_dict(), model_path)
 
 
 if __name__ == "__main__":
@@ -139,6 +135,7 @@ if __name__ == "__main__":
         "--evaluation-interval", type=int, default=1, help="Every each epoch validation should be performed"
     )
     parser.add_argument("--workdir", type=Path, default=Path("logs"), help="Path to store training artifacts")
+    parser.add_argument("--test-point-estimate", action="store_true")
     args = parser.parse_args()
     metrics_valid = not (bool(args.monitor_metric) ^ bool(args.monitor_metric_mode))
     assert (
