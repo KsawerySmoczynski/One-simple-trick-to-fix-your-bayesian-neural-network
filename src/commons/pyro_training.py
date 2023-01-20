@@ -94,6 +94,7 @@ def train_loop(
                     report_metrics(metrics, "test-epoch", e, writer)
             if early_stopping_epochs:
                 if early_stop:
+                    print("STOPPING EARLY")
                     break
 
     return model, guide
@@ -126,9 +127,8 @@ def evaluation(
                 f.write("")
     for idx, (X, y) in tqdm(enumerate(dataloader), desc=f"Evaluation", miniters=10):
         y = y.to(device)
-        out = predictive(X.to(device))[
-            "_RETURN"
-        ]  # change to "obs" if you want to obtain observations instead of probabilities
+        out = predictive(X.to(device))["_RETURN"]
+        # change to "obs" if you want to obtain observations instead of probabilities
         if save_predictions_config:
             predictions = save_predictions_config["reduction"](out.cpu()).numpy()
             max_index = (idx + 1) * dataloader.batch_size
