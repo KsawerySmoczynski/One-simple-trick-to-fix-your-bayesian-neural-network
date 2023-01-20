@@ -1,0 +1,6 @@
+.vscode
+logs
+notebooks
+pyro_experiments
+lightning_logs
+datasets

@@ -43,12 +43,13 @@ class BNN(PyroModule):
     def _pyroize(self):
         to_pyro_module_(self.model)
         for m in self.model.modules():
-            for name, value in list(m.named_parameters(recurse=False)):
-                setattr(
-                    m,
-                    name,
-                    PyroSample(prior=dist.Normal(self.mean, self.std).expand(value.shape).to_event(value.dim())),
-                )
+            if not isinstance(m, nn.BatchNorm2d):
+                for name, value in list(m.named_parameters(recurse=False)):
+                    setattr(
+                        m,
+                        name,
+                        PyroSample(prior=dist.Normal(self.mean, self.std).expand(value.shape).to_event(value.dim())),
+                    )
 
     def _model(self, X: torch.Tensor, y=None):
         return self.forward(X, y)
