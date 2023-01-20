@@ -45,9 +45,14 @@ def main(config: Dict, args):
 
     dataset_name = str(datamodule)
     model_name = str(model.model)
-    activation_name = str(model.model.model.activation)
 
-    workdir = args.workdir / dataset_name / model_name / activation_name / datetime.now().strftime("%H:%M")
+    workdir = args.workdir / dataset_name / model_name
+    
+    for act in model.model.model.activations:
+        workdir = workdir / str(act)
+
+    workdir = workdir / datetime.now().strftime("%H:%M")
+
     workdir.mkdir(parents=True, exist_ok=True)
     save_config(config, workdir / "config.yaml")
     writer = SummaryWriter(workdir)

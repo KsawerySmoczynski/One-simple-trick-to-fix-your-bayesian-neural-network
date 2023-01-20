@@ -1,0 +1,1 @@
+python scripts/bayesian_train.py --config configs/base_config.yaml configs/bayesian/metrics/classification.yaml configs/bayesian/models/1channel/DeepMLEClassify.yaml configs/bayesian/data/1channel/MNIST.yaml configs/bayesian/activation/DeepMLEActivation.yaml --num-samples 50 --monitor-metric Accuracy --monitor-metric-mode max --early-stopping-epochs 3  
