@@ -21,19 +21,19 @@ from src.commons.logging import (
 from src.commons.utils import eval_early_stopping
 from src.models import CLASSIFICATION_MODELS, REGRESSION_MODELS
 from src.models.bnn import BNNClassification, BNNContainer, BNNRegression
-
+from pyro.infer.autoguide.initialization import init_to_sample
 
 def to_bayesian_model(
-    model: nn.Module, mean: float, std: float, device: torch.DeviceObjType, sigma_bound: float = 5.0, *args, **kwargs
+    model: nn.Module, mean: float, weight_std: float, bias_std: float, device: torch.DeviceObjType, sigma_bound: float = 5.0, *args, **kwargs
 ) -> PyroModule:
     if model.__class__ in CLASSIFICATION_MODELS:
-        model = BNNClassification(model, mean, std)
+        model = BNNClassification(model, mean, weight_std, bias_std)
     elif model.__class__ in REGRESSION_MODELS:
-        model = BNNRegression(model, mean, std, sigma_bound)
+        model = BNNRegression(model, mean, weight_std, bias_std, sigma_bound)
     else:
         raise NotImplementedError(f"Model {model.__class__.__name__} is currently unsupported in bayesian setting")
     model.setup(device)
-    guide = AutoDiagonalNormal(model)
+    guide = AutoDiagonalNormal(model, init_scale=0.1)
 
     return BNNContainer(model, guide)
 
@@ -63,11 +63,20 @@ def train_loop(
     if early_stopping_epochs:
         no_improvement_epochs = 0
     for e in range(epochs):
-        with open(result_file, 'a') as res_file:
-            res_file.write(f"EPOCH: {e + 1} \n")
+        with open(result_file, 'a') as res_file:       
             loss = training(svi, train_loader, e, writer, device)
+            
+
+            # import pyro
+            # for name, value in pyro.get_param_store().items():
+            #     print(name, pyro.param(name))
+            # print(guide.quantiles([0.2, 0.5, 0.8])['sigma']))
+
             writer.add_scalar("train/loss-epoch", loss, e + 1)
             if (e + 1) % evaluation_interval == 0:
+                res_file.write(f"EPOCH: {e + 1} \n") 
+                print(f"Epoch: {e}")
+                print(f"Loss: {loss}")
                 predictive = Predictive(model, guide=guide, num_samples=num_samples, return_sites=("obs",))
                 evaluation(predictive, valid_loader, metrics, device)
                 if monitor_metric:
@@ -97,9 +106,7 @@ def train_loop(
 
 def training(svi: SVI, train_loader: Iterator, epoch: int, writer: SummaryWriter, device: torch.DeviceObjType):
     loss = 0
-    for idx, (X, y) in tqdm(
-        enumerate(train_loader), total=len(train_loader), desc=f"Training epoch {epoch}", miniters=10
-    ):
+    for idx, (X, y) in enumerate(train_loader):
         X = X.to(device)
         y = y.to(device)
         step_loss = svi.step(X, y)
@@ -120,7 +127,7 @@ def evaluation(
         if Path(save_predictions_config["output_path"]).exists():
             with open(Path(save_predictions_config["output_path"]), "w") as f:
                 f.write("")
-    for idx, (X, y) in tqdm(enumerate(dataloader), desc=f"Evaluation", miniters=10):
+    for idx, (X, y) in enumerate(dataloader): 
         if not np.isfinite(np.array(X)).all():
             print("WARNING: INF IN DATA")
             X[X == float("-INF")] = 0

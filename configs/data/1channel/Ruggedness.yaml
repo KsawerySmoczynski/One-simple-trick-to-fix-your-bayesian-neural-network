@@ -1,0 +1,11 @@
+data:
+  class_path: src.data.regression.Ruggedness
+  init_args:
+    train_batch_size: 128
+    test_batch_size: 128
+    train_ratio: 0.8
+    validation_ratio: 0.2
+    dataloader_args:
+      num_workers: 4
+      pin_memory: true
+      persistent_workers: true

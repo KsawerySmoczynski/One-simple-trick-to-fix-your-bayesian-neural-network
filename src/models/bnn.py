@@ -18,11 +18,12 @@ class BNNContainer(nn.Module):
 
 
 class BNN(PyroModule):
-    def __init__(self, model: nn.Module, mean: float, std: float):
+    def __init__(self, model: nn.Module, mean: float, weight_std: float, bias_std: float):
         super().__init__()
         self.model = model
         self.mean = torch.tensor(mean)
-        self.std = torch.tensor(std)
+        self.weight_std = torch.tensor(weight_std)
+        self.bias_std = torch.tensor(bias_std)
 
     @property
     def __name__(self):
@@ -37,7 +38,8 @@ class BNN(PyroModule):
     def setup(self, device: torch.DeviceObjType):
         self.to(device)
         self.mean = self.mean.to(device)
-        self.std = self.std.to(device)
+        self.weight_std = self.weight_std.to(device)
+        self.bias_std = self.bias_std.to(device)
         self._pyroize()
 
     def _pyroize(self):
@@ -45,19 +47,28 @@ class BNN(PyroModule):
         for m in self.model.modules():
             if not isinstance(m, nn.BatchNorm2d):
                 for name, value in list(m.named_parameters(recurse=False)):
-                    setattr(
-                        m,
-                        name,
-                        PyroSample(prior=dist.Normal(self.mean, self.std).expand(value.shape).to_event(value.dim())),
-                    )
+                    if name == 'bias':
+                        print("setting bias priors")
+                        setattr(
+                            m,
+                            name,
+                            PyroSample(prior=dist.Normal(self.mean, self.bias_std).expand(value.shape).to_event(value.dim())),
+                        )
+                    else:
+                        print("setting weight priors")
+                        setattr(
+                            m,
+                            name,
+                            PyroSample(prior=dist.Normal(self.mean, self.weight_std).expand(value.shape).to_event(value.dim())),
+                        )
 
     def _model(self, X: torch.Tensor, y=None):
         return self.forward(X, y)
 
 
 class BNNClassification(BNN):
-    def __init__(self, model: nn.Module, mean: torch.Tensor, std: torch.Tensor):
-        super().__init__(model, mean, std)
+    def __init__(self, model: nn.Module, mean: torch.Tensor, weight_std: torch.Tensor, bias_std: torch.Tensor):
+        super().__init__(model, mean, weight_std, bias_std)
 
     def forward(self, X: torch.Tensor, y: torch.Tensor = None) -> torch.Tensor:
         pyro.module("model", self.model)
@@ -68,12 +79,12 @@ class BNNClassification(BNN):
 
 
 class BNNRegression(BNN):
-    def __init__(self, model: nn.Module, mean: torch.Tensor, std: torch.Tensor, sigma_bound: torch.Tensor):
-        super().__init__(model, mean, std)
+    def __init__(self, model: nn.Module, mean: torch.Tensor, weight_std: torch.Tensor, bias_std: torch.Tensor, sigma_bound: torch.Tensor):
+        super().__init__(model, mean, weight_std, bias_std)
         self.sigma_bound = sigma_bound
 
     def forward(self, X, y=None):
-        sigma = pyro.sample("sigma", dist.Uniform(torch.tensor(0.0, device=self.std.device), self.sigma_bound))
+        sigma = pyro.sample("sigma", dist.Uniform(torch.tensor(0., device=self.mean.device), self.sigma_bound))
         mean = self.model(X)
         # print(mean.shape)
 

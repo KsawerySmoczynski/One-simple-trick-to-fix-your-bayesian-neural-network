@@ -114,6 +114,10 @@ def main(config: Dict, args):
 
                 f.write(f"Tain RMSE: {math.sqrt(sum(train_losses) / len(train_loader))}\n")
 
+        for name, param in net.state_dict().items():
+                print(name, param.abs().mean(), param.std())
+
+
     model, guide = train_loop(
         model.model,
         model.guide,

@@ -12,6 +12,7 @@ CLASSIFICATION_MODELS = [
 
 REGRESSION_MODELS = [
 	regression.MLERegression,
+	regression.LINRegression,
 	regression.UNet,
 	regression.RotateNet,
 ]
