@@ -18,7 +18,9 @@ class ResNet18(Module):
         self.print_parameter_size()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return F.log_softmax(self.net.forward(x), dim=1)
+        x = self.net.forward(x)
+        x -= x.max()
+        return F.log_softmax(x, dim=1)
 
     def _set_activation_function(self):
         def replace_relu(module, activation):

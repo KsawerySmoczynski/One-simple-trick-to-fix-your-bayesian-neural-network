@@ -26,6 +26,7 @@ class ReductionMixin(metaclass=abc.ABCMeta):
 
 class ClassificationReductionMixin(ReductionMixin):
     def _get_reduction(self, input_type: str):
+        "Returns probabilities of class"
         assert hasattr(self, "classes"), "Object has to have classes vector assigned"
 
         def reduce_samples(preds: torch.Tensor):

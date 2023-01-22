@@ -1,6 +1,7 @@
 import pyro
 import pyro.distributions as dist
 import torch
+import torch.nn.functional as F
 from pyro.infer.autoguide import AutoGuide
 from pyro.nn import PyroModule
 from pyro.nn.module import PyroSample, to_pyro_module_

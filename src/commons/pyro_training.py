@@ -69,26 +69,29 @@ def train_loop(
                 model,
                 guide=guide,
                 num_samples=num_samples,
-                return_sites=(
-                    "obs",
-                    "_RETURN",
-                ),
+                return_sites=("_RETURN",),
             )
             evaluation(predictive, valid_loader, metrics, device)
             if monitor_metric:
                 early_stopping(metrics)
-                improved = early_stopping.improved(metrics)
-            report_metrics(metrics, "evaluation", e, writer)
+                if early_stopping.improved(metrics):
+                    with open(workdir / "best_epoch.txt", "w") as f:
+                        f.write(str(e))
+            report_metrics(metrics, "evaluation", e, writer, reset=True)
             # if monitor_metric and test_loader and save_predictions_config:
             #     if improved:
-            evaluation(predictive, test_loader, metrics, device, save_predictions_config)
-            report_metrics(metrics, "test-epoch", e, writer)
+            evaluation(predictive, test_loader, metrics, device)
+            report_metrics(metrics, "test", e, writer, reset=True)
             if monitor_metric:
                 if early_stopping.early_stop:
                     print("STOPPING EARLY")
                     import sys
 
                     sys.exit(0)
+            if epochs <= e + 1:
+                import sys
+
+                sys.exit(0)
 
     return model, guide
 

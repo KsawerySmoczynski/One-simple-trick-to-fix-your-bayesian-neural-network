@@ -21,4 +21,5 @@ class DeepMLEClassify(Module):
         x = self.activation(self.layer1(x.view(x.shape[0], -1)))
         x = self.hidden(x)
         x = self.layer4(x)
+        x = x - x.max()
         return F.log_softmax(x, dim=1)

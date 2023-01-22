@@ -8,3 +8,7 @@ metrics:
     init_args:
       num_classes: 10 #Set based on dataset, #TODO infer automatically this parameter
       input_type: probabilities
+  - class_path: src.metrics.classification.NegativeLogLikelihood
+    init_args:
+      num_classes: 10 #Set based on dataset, #TODO infer automatically this parameter
+      input_type: probabilities

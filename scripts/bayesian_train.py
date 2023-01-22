@@ -56,10 +56,6 @@ def main(config: Dict, args):
 
     metrics = get_metrics(metrics_config, device)
 
-    # TODO -> get rid of
-    # to_hist, test_loader and save_predictions_config from train_loop
-    save_predictions_config = {"reduction": partial(torch.mean, dim=0), "output_path": f"{workdir}/results.csv"}
-
     model, guide = train_loop(
         model.model,
         model.guide,
@@ -77,7 +73,6 @@ def main(config: Dict, args):
         args.monitor_metric_mode,
         args.early_stopping_epochs,
         test_loader,
-        save_predictions_config,
     )
 
     print("Testing bayesian model...")
@@ -106,7 +101,7 @@ def main(config: Dict, args):
                 y = y.to(device)
                 out = net(X)
                 for metric in point_estimate_metrics.values():
-                    metric.update(out.exp(), y.to(device))
+                    metric.update(out, y.to(device))
         print("Saving point-estimate model...")
         point_estimate_metrics_path = workdir / "point_estimate_metrics.csv"
         model_path = workdir / "point_estimate_params.pt"
