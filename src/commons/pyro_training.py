@@ -12,6 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torchmetrics import Metric
 from tqdm import tqdm
 
+from src.commons.callbacks import EarlyStopping
 from src.commons.io import save_param_store
 from src.commons.logging import (
     get_monitored_metric_init_val,
@@ -57,10 +58,9 @@ def train_loop(
     test_loader: DataLoader = None,
     save_predictions_config: DataLoader = None,
 ) -> Tuple[PyroModule, PyroModule]:
+    early_stopping = None
     if monitor_metric:
-        best_monitor_metric_value = get_monitored_metric_init_val(monitor_metric_mode)
-    if early_stopping_epochs:
-        no_improvement_epochs = 0
+        early_stopping = EarlyStopping(monitor_metric, monitor_metric_mode, early_stopping_epochs, path=workdir)
     for e in range(epochs):
         loss = training(svi, train_loader, e, writer, device)
         writer.add_scalar("train/loss-epoch", loss, e + 1)
@@ -76,26 +76,19 @@ def train_loop(
             )
             evaluation(predictive, valid_loader, metrics, device)
             if monitor_metric:
-                current_monitor_metric_value = metrics[monitor_metric].compute().cpu()
-                improved = monitor_metric_improvement(
-                    best_monitor_metric_value, current_monitor_metric_value, monitor_metric_mode
-                )
-                if improved:
-                    save_param_store(workdir)
-                    best_monitor_metric_value = current_monitor_metric_value
-                if early_stopping_epochs:
-                    early_stop, no_improvement_epochs = eval_early_stopping(
-                        early_stopping_epochs, no_improvement_epochs, improved
-                    )
+                early_stopping(metrics)
+                improved = early_stopping.improved(metrics)
             report_metrics(metrics, "evaluation", e, writer)
-            if monitor_metric and test_loader and save_predictions_config:
-                if improved:
-                    evaluation(predictive, test_loader, metrics, device, save_predictions_config)
-                    report_metrics(metrics, "test-epoch", e, writer)
-            if early_stopping_epochs:
-                if early_stop:
+            # if monitor_metric and test_loader and save_predictions_config:
+            #     if improved:
+            evaluation(predictive, test_loader, metrics, device, save_predictions_config)
+            report_metrics(metrics, "test-epoch", e, writer)
+            if monitor_metric:
+                if early_stopping.early_stop:
                     print("STOPPING EARLY")
-                    break
+                    import sys
+
+                    sys.exit(0)
 
     return model, guide
 
@@ -119,22 +112,9 @@ def evaluation(
     dataloader: Iterator,
     metrics: Dict,
     device: torch.DeviceObjType,
-    save_predictions_config: Dict = None,
 ):
-    if save_predictions_config:
-        if Path(save_predictions_config["output_path"]).exists():
-            with open(Path(save_predictions_config["output_path"]), "w") as f:
-                f.write("")
     for idx, (X, y) in tqdm(enumerate(dataloader), desc=f"Evaluation", miniters=10):
         y = y.to(device)
         out = predictive(X.to(device))["_RETURN"]
-        # change to "obs" if you want to obtain observations instead of probabilities
-        if save_predictions_config:
-            predictions = save_predictions_config["reduction"](out.cpu()).numpy()
-            max_index = (idx + 1) * dataloader.batch_size
-            max_index = len(dataloader.dataset) if max_index > len(dataloader.dataset) else max_index
-            indices = np.arange(idx * dataloader.batch_size, max_index)
-            with open(Path(save_predictions_config["output_path"]), "ab") as pred_file:
-                np.savetxt(pred_file, np.c_[indices, predictions])
         for metric in metrics.values():
             metric.update(out, y)

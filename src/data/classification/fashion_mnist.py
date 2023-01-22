@@ -20,6 +20,11 @@ class FashionMNIST(DataModule):
         transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize([0.1307], [0.3081])])
         self.train_dataset = FashionMNISTDataset(root=self.root, train=True, transform=transform, download=True)
         self.test_dataset = FashionMNISTDataset(root=self.root, train=False, transform=transform, download=True)
+        # TODO this is only for tests
+        self.train_dataset.data = self.train_dataset.data[:1536]
+        self.train_dataset.targets = self.train_dataset.targets[:1536]
+        self.test_dataset.data = self.test_dataset.data[:512]
+        self.test_dataset.targets = self.test_dataset.targets[:512]
 
         self.train_sampler, self.validation_sampler = self._get_train_val_test_samplers(
             len(self.train_dataset), train_ratio, validation_ratio

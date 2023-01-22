@@ -142,7 +142,7 @@ if __name__ == "__main__":
         metrics_valid
     ), "Arguments monitor metric and monitor metric mode should be either passed both or none of them should be passed"
     if args.early_stopping_epochs:
-        assert args.early_stopping_epochs > 1, "Early stopping should be set up to > 1 epochs"
+        # assert args.early_stopping_epochs > 1, "Early stopping should be set up to > 1 epochs"
         assert (
             bool(args.monitor_metric) and bool(args.monitor_metric_mode) and args.early_stopping_epochs
         ), "Both metric to monitor and it's mode have to be set up while using early stopping"
