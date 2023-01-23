@@ -5,6 +5,7 @@ model:
       in_size: 28
       out_size: 10
       in_channels: 1
+      scale: 10.
   mean: 0.
   std: 1.
   optimizer:
