@@ -5,6 +5,10 @@ model:
       in_size: 784
       hidden_size: 1000
       out_size: 10
+  prior_mean: 0.
+  prior_loc: 1. # value or kaiming
+  q_mean: 0.
+  q_loc: 1.
   mean: 0. #MUST BE FLOATS OTHERWISE RESULT IN ERRORS
   std: 1. #MUST BE FLOATS OTHERWISE RESULT IN ERRORS
   optimizer:

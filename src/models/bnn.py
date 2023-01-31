@@ -39,17 +39,28 @@ class BNN(PyroModule):
         self.to(device)
         self.mean = self.mean.to(device)
         self.std = self.std.to(device)
-        self._pyroize()
+        self._pyroize(device)
 
-    def _pyroize(self):
+    def _pyroize(self, device):
         to_pyro_module_(self.model)
         for m in self.model.modules():
+            std_function = lambda x: self.std
+            if isinstance(m, nn.Linear):
+                std_function = lambda v: torch.tensor(
+                    (2 / v.shape[0]) ** (1 / 2), device=device, requires_grad=False
+                )  # kaiming
+            if isinstance(m, nn.Conv2d):
+                std_function = lambda v: torch.tensor(
+                    (2 / (v.numel() / v.shape[1])) ** (1 / 2), device=device, requires_grad=True
+                )  # kaiming
             if not isinstance(m, nn.BatchNorm2d):
                 for name, value in list(m.named_parameters(recurse=False)):
                     setattr(
                         m,
                         name,
-                        PyroSample(prior=dist.Normal(self.mean, self.std).expand(value.shape).to_event(value.dim())),
+                        PyroSample(
+                            prior=dist.Normal(self.mean, std_function(value)).expand(value.shape).to_event(value.dim())
+                        ),
                     )
 
     def _model(self, X: torch.Tensor, y=None):

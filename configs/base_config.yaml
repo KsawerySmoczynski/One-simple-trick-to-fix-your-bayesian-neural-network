@@ -10,3 +10,9 @@ trainer:
   log_gpu_memory: null
   max_epochs: 50
   precision: 16
+model:
+  model:
+    prior_mean: 0.
+    prior_loc: 1. # value or kaiming
+    q_mean: 0.
+    q_loc: 1.

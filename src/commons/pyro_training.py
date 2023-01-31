@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, Iterator, Tuple
+from typing import Dict, Iterator, Tuple, Union
 
 import numpy as np
 import torch
@@ -25,16 +25,26 @@ from src.models.bnn import BNNClassification, BNNContainer, BNNRegression
 
 
 def to_bayesian_model(
-    model: nn.Module, mean: float, std: float, device: torch.DeviceObjType, sigma_bound: float = 5.0, *args, **kwargs
+    model: nn.Module,
+    prior_mean: float,
+    prior_std: Union[float, str],
+    q_mean: float,
+    q_std: float,
+    device: torch.DeviceObjType,
+    sigma_bound: float = 5.0,
+    *args,
+    **kwargs,
 ) -> PyroModule:
     if model.__class__ in CLASSIFICATION_MODELS:
-        model = BNNClassification(model, mean, std)
+        model = BNNClassification(model, prior_mean, prior_std)
     elif model.__class__ in REGRESSION_MODELS:
-        model = BNNRegression(model, mean, std, sigma_bound)
+        model = BNNRegression(model, prior_mean, prior_std, sigma_bound)
     else:
         raise NotImplementedError(f"Model {model.__class__.__name__} is currently unsupported in bayesian setting")
     model.setup(device)
-    guide = AutoDiagonalNormal(model)
+    # q_mean
+    # init_loc_fn=None -> take a look at TyXe
+    guide = AutoDiagonalNormal(model, init_scale=q_std)
 
     return BNNContainer(model, guide)
 
