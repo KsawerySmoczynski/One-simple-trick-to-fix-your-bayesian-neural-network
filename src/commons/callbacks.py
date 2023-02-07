@@ -44,20 +44,17 @@ class EarlyStopping:
         if self.best_score is None:
             self.best_score = score
             save_param_store(self.path)
+            return True
         elif score < self.best_score + self.delta:
             self.counter += 1
             if self.counter >= self.patience:
                 self.early_stop = True
+            return False
         else:
             self.best_score = score
             self.counter = 0
             save_param_store(self.path)
+            return True
 
     def improved(self, metrics):
-        score = self.mode * metrics[self.monitor_metric].compute().cpu().item()
-        if self.best_score is None:
-            return True
-        elif score < self.best_score + self.delta:
-            return False
-        else:
-            return True
+        return self(metrics)

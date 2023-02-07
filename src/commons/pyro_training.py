@@ -73,7 +73,6 @@ def train_loop(
             )
             evaluation(predictive, valid_loader, metrics, device)
             if monitor_metric:
-                early_stopping(metrics)
                 if early_stopping.improved(metrics):
                     with open(workdir / "best_epoch.txt", "w") as f:
                         f.write(str(e))
@@ -88,11 +87,9 @@ def train_loop(
                     import sys
 
                     sys.exit(0)
-            if epochs <= e + 1:
-                import sys
+    import sys
 
-                sys.exit(0)
-
+    sys.exit(0)
     return model, guide
 
 
