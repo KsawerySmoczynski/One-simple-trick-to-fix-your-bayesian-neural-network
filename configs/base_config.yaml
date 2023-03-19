@@ -13,6 +13,6 @@ trainer:
 model:
   model:
     prior_mean: 0.
-    prior_loc: 1. # value or kaiming
+    prior_std: None # value or kaiming
     q_mean: 0.
-    q_loc: 1.
+    q_std: 1.

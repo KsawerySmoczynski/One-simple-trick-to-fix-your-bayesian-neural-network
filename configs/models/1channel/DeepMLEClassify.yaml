@@ -6,11 +6,9 @@ model:
       hidden_size: 1000
       out_size: 10
   prior_mean: 0.
-  prior_loc: 1. # value or kaiming
+  prior_std: None # value or kaiming
   q_mean: 0.
-  q_loc: 1.
-  mean: 0. #MUST BE FLOATS OTHERWISE RESULT IN ERRORS
-  std: 1. #MUST BE FLOATS OTHERWISE RESULT IN ERRORS
+  q_std: 1.
   optimizer:
     class_path: pyro.optim.Adam
     init_args:

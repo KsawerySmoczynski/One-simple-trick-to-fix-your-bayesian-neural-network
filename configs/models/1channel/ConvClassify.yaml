@@ -5,8 +5,10 @@ model:
       in_size: 28
       out_size: 10
       in_channels: 1
-  mean: 0.
-  std: 1.
+  prior_mean: 0.
+  prior_std: None # value or kaiming
+  q_mean: 0.
+  q_std: 1.
   optimizer:
     class_path: pyro.optim.Adam
     init_args:
