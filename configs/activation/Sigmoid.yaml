@@ -3,3 +3,4 @@ model:
     init_args:
       activation:
         class_path: torch.nn.Sigmoid
+  prior_std: xavier

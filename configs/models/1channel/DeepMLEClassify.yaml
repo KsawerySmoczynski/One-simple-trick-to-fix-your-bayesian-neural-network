@@ -5,11 +5,14 @@ model:
       in_size: 784
       hidden_size: 1000
       out_size: 10
-  mean: 0. #MUST BE FLOATS OTHERWISE RESULT IN ERRORS
-  std: 1. #MUST BE FLOATS OTHERWISE RESULT IN ERRORS
+  prior_mean: 0.
+  prior_std: None # value or kaiming
+  q_mean: 0.
+  q_std: 1.
   optimizer:
     class_path: pyro.optim.Adam
     init_args:
+      # - {lr: 0.001, betas: [0.9, 0.999], weight_decay: 0.000001}
       - {lr: 0.001, betas: [0.9, 0.999]}
   criterion:
     class_path: pyro.infer.Trace_ELBO
