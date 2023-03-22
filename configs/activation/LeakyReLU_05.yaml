@@ -5,4 +5,5 @@ model:
         class_path: torch.nn.LeakyReLU
         init_args:
           negative_slope: 0.5
-  prior_std: kaiming
+  # prior_std: kaiming
+  prior_std: 1.

@@ -30,9 +30,11 @@ class BNN(PyroModule):
         self.std_init_function = None
 
     @staticmethod
-    def xavier_init(m: nn.Module, v: torch.TensorType, device: torch.DeviceObjType):
+    def xavier_init(m: nn.Module, v: torch.TensorType, std_init: Union[float, str], device: torch.DeviceObjType):
         if isinstance(m, nn.Linear):
-            return torch.tensor((2 / v.shape[0] + v.shape[1]) ** (1 / 2), device=device, requires_grad=False)
+            numerator = 2 if len(v.shape) == 2 else 1
+            denominator = v.shape[0] + v.shape[1] if len(v.shape) == 2 else v.shape[0]
+            return torch.tensor((numerator / denominator) ** (1 / 2), device=device, requires_grad=True)
         elif isinstance(m, nn.Conv2d):
             # check with torch
             return torch.tensor((2 / (v.numel() / v.shape[1])) ** (1 / 2), device=device, requires_grad=True)
@@ -40,27 +42,29 @@ class BNN(PyroModule):
             raise NotImplementedError(f"Kaiming activation not implemented for layer {type(m)}")
 
     @staticmethod
-    def kaiming_init(m: nn.Module, v: torch.TensorType, device: torch.DeviceObjType):
+    def kaiming_init(m: nn.Module, v: torch.TensorType, std_init: Union[float, str], device: torch.DeviceObjType):
         if isinstance(m, nn.Linear):
-            return torch.tensor((2 / v.shape[0]) ** (1 / 2), device=device, requires_grad=False)
+            return torch.tensor((2 / v.shape[0]) ** (1 / 2), device=device, requires_grad=True)
         elif isinstance(m, nn.Conv2d):
             return torch.tensor((2 / (v.numel() / v.shape[1])) ** (1 / 2), device=device, requires_grad=True)
         else:
             raise NotImplementedError(f"Kaiming activation not implemented for layer {type(m)}")
 
     @staticmethod
-    def value_init(std_init, m, value, device):
-        return torch.tensor(float(std_init), device=device, requires_grad=False)
+    def value_init(m: nn.Module, v: torch.TensorType, std_init: Union[float, str], device: torch.DeviceObjType):
+        return torch.tensor(float(std_init), device=device, requires_grad=True)
 
-    def _get_std_init_function(self, std_init, device):
-        if std_init == "kaiming":
-            return partial(self.kaiming_init, device=device)
-        elif std_init == "xavier":
-            return partial(self.xavier_init, device=device)
-        elif isinstance(std_init, (int, float)):
-            return partial(self.value_init, device=device)
+    def _get_std_init_function(self, device):
+        if self.std_init == "kaiming":
+            return partial(self.kaiming_init, std_init=self.std_init, device=device)
+        elif self.std_init == "xavier":
+            return partial(self.xavier_init, std_init=self.std_init, device=device)
+        elif isinstance(self.std_init, (int, float)):
+            return partial(self.value_init, std_init=self.std_init, device=device)
         else:
-            raise NotImplementedError(f"Initialization not implemented for value {std_init} of {type(std_init)} type")
+            raise NotImplementedError(
+                f"Initialization not implemented for value {self.std_init} of {type(self.std_init)} type"
+            )
 
     @property
     def __name__(self):
@@ -83,14 +87,14 @@ class BNN(PyroModule):
         for m in self.model.modules():
             if not isinstance(m, nn.BatchNorm2d):
                 for name, value in list(m.named_parameters(recurse=False)):
+                    # mean = self.mean if name == "weight" else torch.tensor(0., device=device, requires_grad=True)
+                    # std = self.std_init_function(m, value) if name == "weight" else torch.tensor(1e-2, device=device, requires_grad=True)
+                    mean = self.mean
+                    std = self.std_init_function(m, value)
                     setattr(
                         m,
                         name,
-                        PyroSample(
-                            prior=dist.Normal(self.mean, self.std_init_function(self.std_init, m, value, device))
-                            .expand(value.shape)
-                            .to_event(value.dim())
-                        ),
+                        PyroSample(prior=dist.Normal(mean, std).expand(value.shape).to_event(value.dim())),
                     )
 
     def _model(self, X: torch.Tensor, y=None):

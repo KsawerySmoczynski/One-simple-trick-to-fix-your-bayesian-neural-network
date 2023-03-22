@@ -1,3 +1,4 @@
+import torch
 import torch.nn.functional as F
 from torch import nn
 
@@ -16,6 +17,4 @@ class ConvClassify(Module):
         x = self.activation(self.conv1(x))
         x = self.activation(self.conv2(x))
         x = self.lin(x.view(x.shape[0], -1))
-        # with torch.no_grad():
-        x = x - x.max()
         return F.log_softmax(x, dim=1)
