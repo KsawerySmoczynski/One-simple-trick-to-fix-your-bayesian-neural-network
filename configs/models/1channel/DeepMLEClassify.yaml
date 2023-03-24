@@ -5,6 +5,7 @@ model:
       in_size: 784
       hidden_size: 1000
       out_size: 10
+      scale: 10.
   mean: 0. #MUST BE FLOATS OTHERWISE RESULT IN ERRORS
   std: 1. #MUST BE FLOATS OTHERWISE RESULT IN ERRORS
   optimizer:
