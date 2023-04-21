@@ -12,6 +12,10 @@ from torch.nn.utils import parameters_to_vector, vector_to_parameters
 
 from src.models.normal import N
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+def d(a):
+    return torch.Tensor([a]).to(device)
 
 def modify_parameter(model, i, value):
     vec = parameters_to_vector(model.parameters())
@@ -31,7 +35,6 @@ def calculate_ll(train_loader, model, device):
             test_good += pred.eq(target.view_as(pred)).sum().item()
     return test_loss, test_good
 
-
 def fit_N(x, p):
     dist = N()
     optim = torch.optim.SGD(dist.parameters(), lr=0.4)
@@ -46,6 +49,7 @@ def fit_N(x, p):
     return out.cpu().detach().numpy()
 
 
+
 def fit_sigma(x, p):
     mu_idx = np.argmax(p)
     mu = x[mu_idx]
@@ -55,7 +59,7 @@ def fit_sigma(x, p):
     sigma = 0.1
 
     while sigma < max_sigma:
-        pn = torch.exp(-((torch.Tensor(x) - mu) ** 2 / (2 * sigma**2)))
+        pn = torch.exp(-((torch.Tensor(x) - mu) ** 2 / (2 * sigma ** 2)))
         # normalize
         pn = pn / pn[mu_idx]
         err = torch.mean((pn - torch.from_numpy(p)) ** 2)
@@ -157,19 +161,19 @@ def traverse_config_and_initialize(iterable: Union[Dict, List, Tuple]):
         return inpt
 
 
-def find_mass(net, layer, idx, val, train_loader, device):
+def find_mass(net, layer, idx, val, train_loader):
     thres = 0.01
     mult = 1.1
     init_window = 0.1
     max_window = 10000
 
-    logp, _ = calculate_ll(train_loader, net, device)
+    logp ,_ = calculate_ll(train_loader, net, device)
 
     right_window = init_window
     while right_window < max_window:
-        print(",", end="")
+        print(',', end='')
         new_val = val + right_window
-        net.state_dict()[layer][tuple(idx)] = new_val
+        net.state_dict()[layer][tuple(idx)] = new_val 
         ll, _ = calculate_ll(train_loader, net, device)
 
         if np.exp(ll - logp) < thres:
@@ -182,10 +186,22 @@ def find_mass(net, layer, idx, val, train_loader, device):
 
     left_window = init_window
     while left_window < max_window:
-        print(",", end="")
+        print(',', end='')
         new_val = val - left_window
-        net.state_dict()[layer][tuple(idx)] = new_val
+        net.state_dict()[layer][tuple(idx)] = new_val 
         ll, _ = calculate_ll(train_loader, net, device)
+
+        if np.exp(ll - logp) < thres:
+            break
+
+        else:
+            left_window *= 1.1
+
+    print("")
+    print("calculated likelihood mass for layer:")
+    print(layer)
+
+    return left_window, right_window
 
 
 def eval_early_stopping(early_stopping_epochs: int, no_improvement_epochs: int, improved: bool) -> int:

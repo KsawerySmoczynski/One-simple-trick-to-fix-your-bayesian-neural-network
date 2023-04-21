@@ -16,3 +16,5 @@ model:
       - {lr: 0.001, betas: [0.9, 0.999]}
   criterion:
     class_path: pyro.infer.Trace_ELBO
+    init_args:
+      retain_graph: True

@@ -4,12 +4,20 @@ from typing import Dict
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
+import pyro
 
 def report_metrics(metrics: Dict, stage: str, epoch: int, writer: SummaryWriter, reset: bool = True) -> None:
     for metric_name, metric in metrics.items():
+        if stage == 'evaluation':
+            print(f"Epoch: {epoch} Metric: {metric_name} Value: {metric.compute()}")
         writer.add_scalar(f"{stage}/{metric_name}", metric.compute(), epoch)
         if reset:
             metric.reset()
+
+    # for name, value in pyro.get_param_store().items():
+        # x = pyro.param(name).data.cpu().numpy()
+        # print(name, x[:30])
+        # print(name)
 
 
 def get_monitored_metric_init_val(monitor_metric_mode: str) -> torch.Tensor:

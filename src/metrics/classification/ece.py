@@ -1,6 +1,7 @@
 from typing import Tuple
 
 import torch
+import numpy as np
 from torchmetrics import Metric
 
 from src.metrics.reduction import ClassificationReductionMixin
@@ -44,6 +45,7 @@ class ExpectedCalibrationError(ClassificationReductionMixin, Metric):
     def _get_bin_cardinalities_acc_conf(
         self, preds: torch.Tensor, target: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        # print(preds[0])
         pred_class = preds.argmax(dim=1)
         conf = preds.amax(dim=1)
         bins = (

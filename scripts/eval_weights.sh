@@ -1,0 +1,1 @@
+python eval_weights.py --config ../configs/base_config.yaml ../configs/metrics/classification.yaml ../configs/models/1channel/DeepMLEClassify.yaml ../configs/data/1channel/MNIST.yaml ../configs/activation/LeakyReLU.yaml  --save_dir sav --net_path params 

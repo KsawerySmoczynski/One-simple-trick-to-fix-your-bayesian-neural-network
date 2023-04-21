@@ -9,25 +9,28 @@ from pyro.infer.autoguide import AutoGuide
 from pyro.nn import PyroModule
 from pyro.nn.module import PyroSample, to_pyro_module_
 from torch import nn
-
+import pyro.distributions.constraints as constraints
+from copy import deepcopy
 
 class BNNContainer(nn.Module):
     def __init__(self, model: PyroModule, guide: AutoGuide):
         super().__init__()
         self.model = model
         self.guide = guide
+        self.net = deepcopy(model.net)
 
     def forward(self, X: torch.Tensor, y: torch.Tensor = None):
         return self.model(X, y)
 
 
 class BNN(PyroModule):
-    def __init__(self, model: nn.Module, mean: float, std_init: Union[float, str]):
+    def __init__(self, model: nn.Module, mean: float, std_init: Union[float, str], net: nn.Module = None):
         super().__init__()
         self.model = model
         self.mean = torch.tensor(mean)
         self.std_init = std_init
         self.std_init_function = None
+        self.net = net
 
     @staticmethod
     def xavier_init(m: nn.Module, v: torch.TensorType, std_init: Union[float, str], device: torch.DeviceObjType):
@@ -82,15 +85,24 @@ class BNN(PyroModule):
         self.std_init_function = self._get_std_init_function(device)
         self._pyroize(device)
 
+    # def net_values(self):
+
     def _pyroize(self, device):
         to_pyro_module_(self.model)
-        for m in self.model.modules():
-            if not isinstance(m, nn.BatchNorm2d):
+        counter = 0
+        for m, n in zip(self.model.modules(), self.net.modules()):
+            if not isinstance(m, nn.BatchNorm1d):
                 for name, value in list(m.named_parameters(recurse=False)):
-                    # mean = self.mean if name == "weight" else torch.tensor(0., device=device, requires_grad=True)
-                    # std = self.std_init_function(m, value) if name == "weight" else torch.tensor(1e-2, device=device, requires_grad=True)
-                    mean = self.mean
-                    std = self.std_init_function(m, value)
+                    counter += 1
+                    print(name, counter)
+                    # print(n.state_dict().keys())
+                    # mean = pyro.param("mean_" + name + str(counter), self.mean)
+                    # std = pyro.param("std_" + name + str(counter), self.std_init_function(m, value), constraint=constraints.positive)
+                    mean = n.state_dict()[name]
+                    # mean = self.mean
+                    std = 10
+                    # print("MEAN: ", mean)
+                    # print("STD: ", std)
                     setattr(
                         m,
                         name,
@@ -102,11 +114,11 @@ class BNN(PyroModule):
 
 
 class BNNClassification(BNN):
-    def __init__(self, model: nn.Module, mean: torch.Tensor, std_init: torch.Tensor):
-        super().__init__(model, mean, std_init)
+    def __init__(self, model: nn.Module, mean: torch.Tensor, std_init: torch.Tensor, net: nn.Module):
+        super().__init__(model, mean, std_init, net)
 
     def forward(self, X: torch.Tensor, y: torch.Tensor = None) -> torch.Tensor:
-        pyro.module("model", self.model)
+        # pyro.module("model", self.model)
         logits = self.model.forward(X)
         with pyro.plate("data", X.shape[0]):
             obs = pyro.sample("obs", dist.Categorical(logits=logits), obs=y)

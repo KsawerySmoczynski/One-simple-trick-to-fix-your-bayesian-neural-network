@@ -11,6 +11,9 @@ from pyro.infer import SVI, Predictive
 from torch.nn.utils import vector_to_parameters
 from torch.utils.tensorboard import SummaryWriter
 
+from torch.nn import CrossEntropyLoss
+from torch.optim import Adam
+
 from src.commons.io import load_config, load_param_store, print_command, save_config
 from src.commons.logging import save_metrics
 from src.commons.pyro_training import evaluation, to_bayesian_model, train_loop
@@ -30,16 +33,54 @@ def main(config: Dict, args):
     device = torch.device(training_config["device"])
     epochs = training_config["max_epochs"]
     point_estimate_model_config = {**model_config["model"]}
-    model_config["model"] = traverse_config_and_initialize(model_config["model"])
-    model = to_bayesian_model(**model_config, device=device)
-    optimizer = traverse_config_and_initialize(model_config["optimizer"])
-    criterion = traverse_config_and_initialize(model_config["criterion"])
-    svi = SVI(model.model, model.guide, optimizer, loss=criterion)
+    net = traverse_config_and_initialize(model_config["model"])
 
     datamodule = traverse_config_and_initialize(data_config)
     train_loader = datamodule.train_dataloader()
     validation_loader = datamodule.validation_dataloader()
     test_loader = datamodule.test_dataloader()
+    # print(len(train_loader))
+    # print(len(validation_loader))
+
+    print("Deterministric training")
+    criterion = CrossEntropyLoss()
+    net.to(device)
+    optimizer = Adam(net.parameters())
+
+    for epoch in range(0):
+        print("Epoch: ", epoch)
+        net.train()
+        for x, y in train_loader:
+            x, y = x.to(device), y.to(device)
+            optimizer.zero_grad()
+            out = net(x).exp()
+            loss = criterion(out, y)
+            loss.backward()
+            optimizer.step()
+
+        net.eval()
+        ok = 0
+        total = 0
+        for x, y in validation_loader:
+            x, y = x.to(device), y.to(device)
+            out = net(x)
+
+            _, preds = torch.max(out, 1)
+
+            ok += (preds == y).sum()
+            total += y.shape[0]
+
+        print(f"Validation accuracy: {ok / total}")
+
+    # torch.save(net.state_dict(), "scripts/params")
+    # import sys
+    # sys.exit(0)
+
+    model_config["model"] = traverse_config_and_initialize(model_config["model"])
+    model = to_bayesian_model(net, **model_config, device=device)
+    optimizer = traverse_config_and_initialize(model_config["optimizer"])
+    criterion = traverse_config_and_initialize(model_config["criterion"])
+    svi = SVI(model.model, model.guide, optimizer, loss=criterion)
 
     metrics = get_metrics(metrics_config, device)
     if args.monitor_metric and not args.monitor_metric in metrics:
@@ -59,6 +100,7 @@ def main(config: Dict, args):
     model, guide = train_loop(
         model.model,
         model.guide,
+        model.net,
         train_loader,
         validation_loader,
         svi,

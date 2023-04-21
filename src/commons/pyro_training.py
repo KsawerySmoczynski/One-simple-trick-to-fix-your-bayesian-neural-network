@@ -1,6 +1,8 @@
 from pathlib import Path
 from typing import Dict, Iterator, Tuple, Union
 
+import pyro
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from pyro.infer import SVI, Predictive
@@ -11,6 +13,7 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from torchmetrics import Metric
 from tqdm import tqdm
+from pyro.infer.autoguide.initialization import init_to_sample, init_to_mean
 
 from src.commons.callbacks import EarlyStopping
 from src.commons.io import save_param_store
@@ -25,6 +28,7 @@ from src.models.bnn import BNNClassification, BNNContainer, BNNRegression
 
 
 def to_bayesian_model(
+    net: nn.Module,
     model: nn.Module,
     prior_mean: float,
     prior_std: Union[float, str],
@@ -36,7 +40,7 @@ def to_bayesian_model(
     **kwargs,
 ) -> PyroModule:
     if model.__class__ in CLASSIFICATION_MODELS:
-        model = BNNClassification(model, prior_mean, prior_std)
+        model = BNNClassification(model, prior_mean, prior_std, net)
     elif model.__class__ in REGRESSION_MODELS:
         model = BNNRegression(model, prior_mean, prior_std, sigma_bound)
     else:
@@ -44,7 +48,9 @@ def to_bayesian_model(
     model.setup(device)
     # q_mean
     # init_loc_fn=None -> take a look at TyXe
-    guide = AutoDiagonalNormal(model, init_scale=q_std)
+    guide = AutoDiagonalNormal(model, init_loc_fn=init_to_mean, init_scale=0.002)
+    # guide = AutoDiagonalNormal(model)
+    # guide = AutoDiagonalNormal(model, init_scale=q_std)
 
     return BNNContainer(model, guide)
 
@@ -52,6 +58,7 @@ def to_bayesian_model(
 def train_loop(
     model,
     guide,
+    net,
     train_loader: DataLoader,
     valid_loader: DataLoader,
     svi: SVI,
@@ -68,12 +75,27 @@ def train_loop(
     test_loader: DataLoader = None,
     save_predictions_config: DataLoader = None,
 ) -> Tuple[PyroModule, PyroModule]:
+
+    plot_locs = [[],[],[]]
+    plot_stds = [[],[],[]]
+    plot_idxs = [(i+1) * 5 * 10 ** 5 for i in range(3)]
+
     early_stopping = None
     if monitor_metric:
         early_stopping = EarlyStopping(monitor_metric, monitor_metric_mode, early_stopping_epochs, path=workdir)
     for e in range(epochs):
         loss = training(svi, train_loader, e, writer, device)
         writer.add_scalar("train/loss-epoch", loss, e + 1)
+        
+        for name, value in pyro.get_param_store().items():
+            x = pyro.param(name).data.cpu().numpy()
+            # print(name)
+            for i in range(3):
+                if 'loc' in name:
+                    plot_locs[i].append(x[plot_idxs[i]])
+                else:
+                    plot_stds[i].append(x[plot_idxs[i]])
+
         if (e + 1) % evaluation_interval == 0:
             predictive = Predictive(
                 model,
@@ -96,6 +118,40 @@ def train_loop(
                 if early_stopping.early_stop:
                     print("STOPPING EARLY")
                     import sys
+
+                    print("making parameter plots")
+                    for i in range(3):
+                        plt.title(f"Layer{i}")
+                        plt.errorbar(range(1,e+2), plot_locs[i], plot_stds[i], linestyle='None', marker='o')
+                        plt.savefig(f"plot{i}.png")
+                        plt.clf()
+
+                    print("converting to deterministic net")
+                    pred = Predictive(model=model, guide=guide, num_samples=100)
+                    out = pred(torch.zeros(512, 28*28).to(device))
+                    state_dict = {}
+
+                    for name, value in out.items():
+                      if name != 'obs':
+                        val = torch.mean(value, dim=0).squeeze()
+                        # print(name, val.shape)
+                        state_dict[name[6:]] = val
+
+                    net.load_state_dict(state_dict)
+                    net.eval()
+                    ok = 0
+                    total = 0
+                    for x, y in valid_loader:
+                        x, y = x.to(device), y.to(device)
+                        out = net(x)
+                        _, preds = torch.max(out, 1)
+
+                        ok += (preds == y).sum()
+                        total += y.shape[0]
+
+                    print(f"Validation accuracy: {ok / total}")
+
+                    torch.save(net.state_dict(), "scripts/params")
 
                     sys.exit(0)
             if epochs <= e + 1:
