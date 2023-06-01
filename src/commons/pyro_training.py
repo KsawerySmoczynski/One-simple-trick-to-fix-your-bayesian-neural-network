@@ -3,6 +3,7 @@ from typing import Dict, Iterator, Tuple, Union
 
 import pyro
 import matplotlib.pyplot as plt
+import seaborn as sns
 import numpy as np
 import torch
 from pyro.infer import SVI, Predictive
@@ -49,6 +50,7 @@ def to_bayesian_model(
     # q_mean
     # init_loc_fn=None -> take a look at TyXe
     guide = AutoDiagonalNormal(model, init_loc_fn=init_to_mean, init_scale=0.002)
+    # guide = AutoDiagonalNormal(model, init_loc_fn=init_to_mean, init_scale=0.03)
     # guide = AutoDiagonalNormal(model)
     # guide = AutoDiagonalNormal(model, init_scale=q_std)
 
@@ -87,14 +89,14 @@ def train_loop(
         loss = training(svi, train_loader, e, writer, device)
         writer.add_scalar("train/loss-epoch", loss, e + 1)
         
-        for name, value in pyro.get_param_store().items():
-            x = pyro.param(name).data.cpu().numpy()
-            # print(name)
-            for i in range(3):
-                if 'loc' in name:
-                    plot_locs[i].append(x[plot_idxs[i]])
-                else:
-                    plot_stds[i].append(x[plot_idxs[i]])
+        # for name, value in pyro.get_param_store().items():
+        #     x = pyro.param(name).data.cpu().numpy()
+        #     # print(name)
+        #     for i in range(3):
+        #         if 'loc' in name:
+        #             plot_locs[i].append(x[plot_idxs[i]])
+        #         else:
+        #             plot_stds[i].append(x[plot_idxs[i]])
 
         if (e + 1) % evaluation_interval == 0:
             predictive = Predictive(
@@ -119,39 +121,73 @@ def train_loop(
                     print("STOPPING EARLY")
                     import sys
 
-                    print("making parameter plots")
-                    for i in range(3):
-                        plt.title(f"Layer{i}")
-                        plt.errorbar(range(1,e+2), plot_locs[i], plot_stds[i], linestyle='None', marker='o')
-                        plt.savefig(f"plot{i}.png")
-                        plt.clf()
+                    print("calculating prob curves")
+                    pred = Predictive(model=model, guide=guide, num_samples=100, return_sites=("_RETURN",))
 
-                    print("converting to deterministic net")
-                    pred = Predictive(model=model, guide=guide, num_samples=100)
-                    out = pred(torch.zeros(512, 28*28).to(device))
-                    state_dict = {}
+                    probs = []
+                    for i in tqdm(range(200)):
+                        xi = np.zeros(200) + (i * 0.03 - 3)
+                        yi = np.arange(-3, 3, 0.03)
+                        x = np.stack([xi, yi], axis=1)
+                        # print(x.shape)
+                        out = pred(torch.Tensor(x).to(device))
+                        # print(out['_RETURN'].cpu().mean(axis=0)[:,0].cpu().shape)
+                        probs.append(out['_RETURN'].cpu().mean(axis=0)[:,0].cpu())
+                        # print(out.shape)
+                        # print(out['_RETURN'][:,0])
 
-                    for name, value in out.items():
-                      if name != 'obs':
-                        val = torch.mean(value, dim=0).squeeze()
-                        # print(name, val.shape)
-                        state_dict[name[6:]] = val
+                    prob_grid = np.stack(probs, axis=1)
+                    print(prob_grid.shape)
 
-                    net.load_state_dict(state_dict)
-                    net.eval()
-                    ok = 0
-                    total = 0
+                    cmap = sns.diverging_palette(250, 12, s=85, l=25, as_cmap=True)
+                    fig, ax = plt.subplots(figsize=(16, 9))
+                    axes = np.arange(-3, 3, 0.03)
+                    contour = ax.contourf(axes, axes, prob_grid, cmap=cmap)
+
                     for x, y in valid_loader:
-                        x, y = x.to(device), y.to(device)
-                        out = net(x)
-                        _, preds = torch.max(out, 1)
+                        x = np.array(x.cpu())
+                        y = np.array(y.cpu())
 
-                        ok += (preds == y).sum()
-                        total += y.shape[0]
+                        ax.scatter(x[y == 0, 0], x[y == 0, 1], color="C0")
+                        ax.scatter(x[y == 1, 0], x[y == 1, 1], color="C1")
 
-                    print(f"Validation accuracy: {ok / total}")
+                    cbar = plt.colorbar(contour, ax=ax)
+                    _ = ax.set(xlim=(-3, 3), ylim=(-3, 3), xlabel="X", ylabel="Y")
+                    cbar.ax.set_ylabel("Posterior predictive mean probability of class label = 0")
+                    plt.savefig('leaky05.png')
+                    # print("making parameter plots")
+                    # for i in range(3):
+                    #     plt.title(f"Layer{i}")
+                    #     plt.errorbar(range(1,e+2), plot_locs[i], plot_stds[i], linestyle='None', marker='o')
+                    #     plt.savefig(f"plot{i}.png")
+                    #     plt.clf()
 
-                    torch.save(net.state_dict(), "scripts/params")
+                    # print("converting to deterministic net")
+                    # pred = Predictive(model=model, guide=guide, num_samples=100)
+                    # out = pred(torch.zeros(512, 28*28).to(device))
+                    # state_dict = {}
+
+                    # for name, value in out.items():
+                    #   if name != 'obs':
+                    #     val = torch.mean(value, dim=0).squeeze()
+                    #     # print(name, val.shape)
+                    #     state_dict[name[6:]] = val
+
+                    # net.load_state_dict(state_dict)
+                    # net.eval()
+                    # ok = 0
+                    # total = 0
+                    # for x, y in valid_loader:
+                    #     x, y = x.to(device), y.to(device)
+                    #     out = net(x)
+                    #     _, preds = torch.max(out, 1)
+
+                    #     ok += (preds == y).sum()
+                    #     total += y.shape[0]
+
+                    # print(f"Validation accuracy: {ok / total}")
+
+                    # torch.save(net.state_dict(), "scripts/params")
 
                     sys.exit(0)
             if epochs <= e + 1:
@@ -169,6 +205,9 @@ def training(svi: SVI, train_loader: Iterator, epoch: int, writer: SummaryWriter
     ):
         X = X.to(device)
         y = y.to(device)
+        # print(X.shape)
+        # print(y.shape)
+        # print("input shapes:", X.shape, y.shape)
         step_loss = svi.step(X, y)
         loss += step_loss
         batch_index = (epoch + 1) * len(train_loader) + idx

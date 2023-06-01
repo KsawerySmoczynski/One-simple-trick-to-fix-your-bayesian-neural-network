@@ -120,6 +120,7 @@ class BNNClassification(BNN):
     def forward(self, X: torch.Tensor, y: torch.Tensor = None) -> torch.Tensor:
         # pyro.module("model", self.model)
         logits = self.model.forward(X)
+        # print(y)
         with pyro.plate("data", X.shape[0]):
             obs = pyro.sample("obs", dist.Categorical(logits=logits), obs=y)
         return logits.exp()

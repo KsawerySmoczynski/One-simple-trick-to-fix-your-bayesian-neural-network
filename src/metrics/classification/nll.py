@@ -29,7 +29,15 @@ class NegativeLogLikelihood(ClassificationReductionMixin, Metric):
         self.to(device)
 
     def update(self, preds: torch.Tensor, target: torch.Tensor):
+        # print(preds)
+        # pred smoothing - NLL of 
+        # preds = preds * 0.99 + 0.001
         preds = self.reduction(preds)
+        # preds = torch.mean(preds, dim=0)
+        # print(preds)
+        # nll = F.nll_loss(preds, target, reduction='none')
+        #  ~1% samples have inf NLL
+        # print(torch.isinf(nll).sum())
         self.nll += F.nll_loss(preds, target, reduction="sum")
 
     def compute(self):

@@ -8,7 +8,7 @@ trainer:
   default_root_dir: null
   device: "cuda:0"
   log_gpu_memory: null
-  max_epochs: 50
+  max_epochs: 500
   precision: 16
 model:
   model:

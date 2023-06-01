@@ -1,0 +1,6 @@
+model:
+  model:
+    init_args:
+      activation:
+        class_path: torch.nn.Tanh
+  prior_std: 1
