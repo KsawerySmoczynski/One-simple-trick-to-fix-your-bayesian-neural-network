@@ -32,7 +32,7 @@ class RotationDataset(Dataset):
     img1 = self.transform(self.data[idx])
     img2 = transforms.functional.rotate(img1, angle)
     
-    return torch.concat([img1, img2]), angle / 45
+    return torch.concat([img1, img2]), angle / 0.45
  
 class Rotation(DataModule):
     def __init__(

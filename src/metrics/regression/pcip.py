@@ -24,5 +24,5 @@ class PCIP(RegressionReductionMixin, Metric):
 
 
     def compute(self) -> torch.Tensor:
-        return 100 * self.in_interval / self.total - self.percentile
+        return 100 * self.in_interval / self.total 
 

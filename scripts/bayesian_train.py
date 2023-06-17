@@ -3,6 +3,7 @@ from datetime import datetime
 from functools import partial
 from pathlib import Path
 from typing import Dict
+from copy import deepcopy
 
 import numpy as np
 import pyro
@@ -34,10 +35,9 @@ def main(config: Dict, args):
     point_estimate_model_config = {**model_config["model"]}
     net = traverse_config_and_initialize(model_config["model"])
     model_config["model"] = traverse_config_and_initialize(model_config["model"])
-    model = to_bayesian_model(**model_config, device=device)
-    optimizer = traverse_config_and_initialize(model_config["optimizer"])
-    criterion = traverse_config_and_initialize(model_config["criterion"])
-    svi = SVI(model.model, model.guide, optimizer, loss=criterion)
+
+    config_cp = deepcopy(model_config)
+    model = to_bayesian_model(net, args.variance, **config_cp, device=device)
 
     datamodule = traverse_config_and_initialize(data_config)
     train_loader = datamodule.train_dataloader()
@@ -46,19 +46,78 @@ def main(config: Dict, args):
 
     print(len(train_loader), len(validation_loader), len(test_loader))
 
-    metrics = get_metrics(metrics_config, device)
-    if args.monitor_metric and not args.monitor_metric in metrics:
-        raise AttributeError(f"{args.monitor_metric} metric wasn't initialized check configs")
-
     dataset_name = str(datamodule)
     model_name = str(model.model)
     activation_name = str(model.model.model.activation)
     seed_name = str(training_config["seed"])
 
-    workdir = args.workdir / dataset_name / model_name / activation_name / seed_name / datetime.now().strftime("%H:%M")
+    print(activation_name)
+
+    workdir = args.workdir / args.variance  / activation_name / seed_name 
     workdir.mkdir(parents=True, exist_ok=True)
     save_config(config, workdir / "config.yaml")
     writer = SummaryWriter(workdir)
+
+    # for m in net.children():
+    #     print(m)
+    #     if hasattr(m, 'weight'):
+    #         print('x')
+    #         m.weight.data.normal_(0, 1)
+
+    if args.task == 'regression' and args.deterministic_training:
+            deterministic_path = workdir / "deterministic_results.txt"
+            
+            criterion = nn.MSELoss() 
+            optimizer = torch.optim.Adam(net.parameters()) 
+            net.cuda()
+            
+            print("DETERMINISTIC TRAINING")
+            for epoch in range(10):
+                with open(deterministic_path, 'a') as f:
+                    net.eval()
+                    eval_losses = []
+                    for inputs, labels in validation_loader:
+                        inputs = inputs.float().cuda()
+                        labels = labels.float().cuda()
+                        outputs = net(inputs)
+
+                        eval_losses.append(((outputs - labels)**2).mean())
+
+                    f.write(f"Validation RMSE: {math.sqrt(sum(eval_losses) / len(validation_loader))}\n")
+                    print(f"Validation RMSE: {math.sqrt(sum(eval_losses) / len(validation_loader))}")
+
+
+                    print(f"EPOCH: {epoch + 1}")
+      
+                    net.train()
+                    f.write(f"Epoch: {epoch + 1}\n")
+                    train_losses = []
+                    for inputs, labels in train_loader:
+                        inputs = inputs.float().cuda()
+                        labels = labels.float().cuda()
+                        optimizer.zero_grad()
+                     
+                        outputs = net(inputs)
+                        loss = criterion(outputs, labels)
+                        loss.backward()
+                        optimizer.step()
+                     
+                        train_losses.append(loss.item())
+
+                    f.write(f"Tain RMSE: {math.sqrt(sum(train_losses) / len(train_loader))}\n")
+
+            for name, param in net.state_dict().items():
+                    print(name, param.abs().mean(), param.std())
+
+
+    model = to_bayesian_model(net, args.variance, **model_config, device=device)
+    optimizer = traverse_config_and_initialize(model_config["optimizer"])
+    criterion = traverse_config_and_initialize(model_config["criterion"])
+    svi = SVI(model.model, model.guide, optimizer, loss=criterion)
+
+    metrics = get_metrics(metrics_config, device)
+    if args.monitor_metric and not args.monitor_metric in metrics:
+        raise AttributeError(f"{args.monitor_metric} metric wasn't initialized check configs")
 
     metrics = get_metrics(metrics_config, device)
 
@@ -74,49 +133,6 @@ def main(config: Dict, args):
     print(args.deterministic_training)
     print(args.task)
     
-    if args.task == 'regression' and args.deterministic_training:
-        deterministic_path = workdir / "deterministic_results.txt"
-        
-        criterion = nn.MSELoss() 
-        optimizer = torch.optim.Adam(net.parameters()) 
-        net.cuda()
-        
-        print("DETERMINISTIC TRAINING")
-        for epoch in range(50):
-            with open(deterministic_path, 'a') as f:
-                net.eval()
-                eval_losses = []
-                for inputs, labels in validation_loader:
-                    inputs = inputs.float().cuda()
-                    labels = labels.float().cuda()
-                    outputs = net(inputs)
-
-                    eval_losses.append(((outputs - labels)**2).mean())
-
-                f.write(f"Validation RMSE: {math.sqrt(sum(eval_losses) / len(validation_loader))}\n")
-
-                print(f"EPOCH: {epoch + 1}")
-  
-                net.train()
-                f.write(f"Epoch: {epoch + 1}\n")
-                train_losses = []
-                for inputs, labels in train_loader:
-                    inputs = inputs.float().cuda()
-                    labels = labels.float().cuda()
-                    optimizer.zero_grad()
-                 
-                    outputs = net(inputs)
-                    loss = criterion(outputs, labels)
-                    loss.backward()
-                    optimizer.step()
-                 
-                    train_losses.append(loss.item())
-
-                f.write(f"Tain RMSE: {math.sqrt(sum(train_losses) / len(train_loader))}\n")
-
-        for name, param in net.state_dict().items():
-                print(name, param.abs().mean(), param.std())
-
 
     model, guide = train_loop(
         model.model,
@@ -199,6 +215,8 @@ if __name__ == "__main__":
     parser.add_argument("--test-point-estimate", action="store_true")
     parser.add_argument("--deterministic-training", action="store_true")
     parser.add_argument("--seed", type=int, help="seed for randomization")
+    parser.add_argument("--variance", type=str, help="auto or manual - whether the values of variance for VI are chosen automatically or manually.")
+    parser.add_argument("--leaky-slope", type=float, help="negative_slope value for leaky_relu")
     parser.add_argument("--lr", type=float, help="learning rate for training")
     args = parser.parse_args()
     metrics_valid = not (bool(args.monitor_metric) ^ bool(args.monitor_metric_mode))
@@ -223,6 +241,10 @@ if __name__ == "__main__":
 
     if args.lr is not None:
         config["model"]["optimizer"]["init_args"][0]["lr"] = args.lr
+
+    if args.leaky_slope is not None:
+        config['model']['model']['init_args']['activation']['init_args']['negative_slope'] = round(args.leaky_slope / 10 - 1, 1)
+
 
     print_command()
 

@@ -21,19 +21,29 @@ from src.commons.logging import (
 from src.commons.utils import eval_early_stopping
 from src.models import CLASSIFICATION_MODELS, REGRESSION_MODELS
 from src.models.bnn import BNNClassification, BNNContainer, BNNRegression
-from pyro.infer.autoguide.initialization import init_to_sample
+from pyro.infer.autoguide.initialization import init_to_sample, init_to_mean
+
 
 def to_bayesian_model(
-    model: nn.Module, mean: float, weight_std: float, bias_std: float, device: torch.DeviceObjType, sigma_bound: float = 5.0, *args, **kwargs
+    net: nn.Module, variance: str, model: nn.Module, mean: float, weight_std: float, bias_std: float, device: torch.DeviceObjType, sigma_bound: float = 5.0, *args, **kwargs
 ) -> PyroModule:
     if model.__class__ in CLASSIFICATION_MODELS:
         model = BNNClassification(model, mean, weight_std, bias_std)
     elif model.__class__ in REGRESSION_MODELS:
-        model = BNNRegression(model, mean, weight_std, bias_std, sigma_bound)
+        model = BNNRegression(model, mean, weight_std, bias_std, sigma_bound, variance, net)
     else:
         raise NotImplementedError(f"Model {model.__class__.__name__} is currently unsupported in bayesian setting")
     model.setup(device)
-    guide = AutoDiagonalNormal(model, init_scale=0.1)
+    
+    if variance == 'manual':
+        vec = torch.nn.utils.parameters_to_vector(net.parameters())
+        manual_std = round(vec.cpu().detach().numpy().std() / 5, 5)
+        print(manual_std)
+        guide = AutoDiagonalNormal(model, init_loc_fn=init_to_mean, init_scale=manual_std)
+    elif variance == 'auto':
+        guide = AutoDiagonalNormal(model)
+    else:
+        raise NotImplementedError("variance should be either auto or manual")
 
     return BNNContainer(model, guide)
 
@@ -85,6 +95,8 @@ def train_loop(
                         best_monitor_metric_value, current_monitor_metric_value, monitor_metric_mode
                     )
                     if improved:
+                        with open(workdir / "best_epoch.txt", "w") as f:
+                            f.write(str(e))
                         save_param_store(workdir)
                         best_monitor_metric_value = current_monitor_metric_value
                     if early_stopping_epochs:
