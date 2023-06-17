@@ -8,6 +8,6 @@ CLASSIFICATION_MODELS = [
     classification.LeNet,
     classification.LogisticRegression,
     classification.ResNet18,
-    classification.ToyClassify,
+    classification.MLEClassify,
 ]
 REGRESSION_MODELS = [regression.MLERegression]

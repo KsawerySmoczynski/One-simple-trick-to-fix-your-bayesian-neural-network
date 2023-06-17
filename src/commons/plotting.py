@@ -13,14 +13,16 @@ def plot_1d(df, val, i, train_limit, save_path: str = None):
     ax.plot(df[:, 0], p, c="b")
     # p_N = fit_N(df[:, 0], p)
     p_N = fit_sigma(df[:, 0], p)
-    ax.plot(df[:, 0], p_N, alpha=0.7, c="y")
-    ax.plot(df[:, 0], good, alpha=0.7, c="g")
-    ax.axvline(x=val, c="r")
+    # ax.plot(df[:, 0], p_N, alpha=0.7, c="y")
+    # ax.plot(df[:, 0], good, alpha=0.7, c="g")
+    # ax.axvline(x=val, c="r")
     plt.ylim(0.0, 1.05)
-    plt.legend(["likelihood", "normal fitted", "accuracy", "parameter"])
-    plt.title(f"i:{i}, val: {val}")
+    # plt.legend(["likelihood", "normal fitted", "accuracy", "parameter"])
+    plt.title('LeakyReLU')
+    plt.xlabel('weight')
+    plt.ylabel('Likelihood')
     if save_path:
-        plt.savefig(save_path)
+        plt.savefig(save_path, dpi=1000)
     else:
         plt.show()
 

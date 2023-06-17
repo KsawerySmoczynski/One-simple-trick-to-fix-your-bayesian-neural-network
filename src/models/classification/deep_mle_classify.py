@@ -17,6 +17,7 @@ class DeepMLEClassify(Module):
         self.layer2 = nn.Linear(hidden_size, hidden_size)
         self.layer3 = nn.Linear(hidden_size, hidden_size)
         self.layer4 = nn.Linear(hidden_size, out_size)
+        print(activation)
         self.print_parameter_size()
 
     def forward(self, x):

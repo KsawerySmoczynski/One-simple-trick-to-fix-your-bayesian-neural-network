@@ -83,6 +83,7 @@ def seed_everything(seed: int) -> int:
         print(f"{seed} is not in bounds, numpy accepts from {min_seed_value} to {max_seed_value}")
         seed = np.randint(min_seed_value, max_seed_value)
 
+    print(f"seed: {seed}")
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -159,7 +160,6 @@ def traverse_config_and_initialize(iterable: Union[Dict, List, Tuple]):
         return items
     else:
         return inpt
-
 
 def find_mass(net, layer, idx, val, train_loader):
     thres = 0.01

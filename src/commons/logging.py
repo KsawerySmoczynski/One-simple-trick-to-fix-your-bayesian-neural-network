@@ -6,10 +6,11 @@ from torch.utils.tensorboard import SummaryWriter
 
 import pyro
 
-def report_metrics(metrics: Dict, stage: str, epoch: int, writer: SummaryWriter, reset: bool = True) -> None:
+def report_metrics(metrics: Dict, stage: str, epoch: int, writer: SummaryWriter, f,  reset: bool = True) -> None:
     for metric_name, metric in metrics.items():
         if stage == 'evaluation':
             print(f"Epoch: {epoch} Metric: {metric_name} Value: {metric.compute()}")
+        f.write(f"Stage: {stage} Epoch: {epoch} Metric: {metric_name} Value: {metric.compute()}\n")
         writer.add_scalar(f"{stage}/{metric_name}", metric.compute(), epoch)
         if reset:
             metric.reset()

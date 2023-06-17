@@ -47,7 +47,13 @@ def main(config: Dict, args):
     net.to(device)
     optimizer = Adam(net.parameters())
 
-    for epoch in range(0):
+    # for m in net.children():
+    #     print(m)
+    #     if hasattr(m, 'weight'):
+    #         print('x')
+    #         m.weight.data.normal_(0, 1)
+
+    for epoch in range(10):
         print("Epoch: ", epoch)
         net.train()
         for x, y in train_loader:
@@ -72,12 +78,12 @@ def main(config: Dict, args):
 
         print(f"Validation accuracy: {ok / total}")
 
-    # torch.save(net.state_dict(), "scripts/params")
-    # import sys
-    # sys.exit(0)
+    torch.save(net.state_dict(), "scripts/relu-params")
+    import sys
+    sys.exit(0)
 
     model_config["model"] = traverse_config_and_initialize(model_config["model"])
-    model = to_bayesian_model(net, **model_config, device=device)
+    model = to_bayesian_model(net, args.variance, **model_config, device=device)
     optimizer = traverse_config_and_initialize(model_config["optimizer"])
     criterion = traverse_config_and_initialize(model_config["criterion"])
     svi = SVI(model.model, model.guide, optimizer, loss=criterion)
@@ -89,8 +95,9 @@ def main(config: Dict, args):
     dataset_name = str(datamodule)
     model_name = str(model.model)
     activation_name = str(model.model.model.activation)
+    seed_name = str(args.seed)
 
-    workdir = args.workdir / dataset_name / model_name / activation_name / datetime.now().strftime("%H:%M")
+    workdir = args.workdir / args.variance / dataset_name / model_name / activation_name / seed_name
     workdir.mkdir(parents=True, exist_ok=True)
     save_config(config, workdir / "config.yaml")
     writer = SummaryWriter(workdir)
@@ -172,6 +179,9 @@ if __name__ == "__main__":
         "--evaluation-interval", type=int, default=1, help="Every each epoch validation should be performed"
     )
     parser.add_argument("--workdir", type=Path, default=Path("logs"), help="Path to store training artifacts")
+    parser.add_argument("--seed", type=int, help="seed for randomization")
+    parser.add_argument("--leaky-slope", type=float, help="negative_slope value for leaky_relu")
+    parser.add_argument("--variance", type=str, help="auto or manual - whether the values of variance for VI are chosen automatically or manually.")
     parser.add_argument("--test-point-estimate", action="store_true")
     args = parser.parse_args()
     metrics_valid = not (bool(args.monitor_metric) ^ bool(args.monitor_metric_mode))
@@ -183,14 +193,15 @@ if __name__ == "__main__":
         assert (
             bool(args.monitor_metric) and bool(args.monitor_metric_mode) and args.early_stopping_epochs
         ), "Both metric to monitor and it's mode have to be set up while using early stopping"
-    args.workdir = args.workdir / datetime.now().strftime("%Y%m%d")
+    # args.workdir = args.workdir / datetime.now().strftime("%Y%m%d")
     config = load_config(args.config)
-    model_config, data_config, metrics_config, training_config = get_configs(config)
+    
+    if args.seed is not None:
+        config['seed_everything'] = args.seed
+
+    if args.leaky_slope is not None:
+        config['model']['model']['init_args']['activation']['init_args']['negative_slope'] = round(args.leaky_slope / 10 - 1, 1)
+
     print_command()
-
-    # Will be moved
-    training_config["num_samples"] = args.num_samples
-
-    seed_everything(training_config["seed"])
 
     main(config, args)

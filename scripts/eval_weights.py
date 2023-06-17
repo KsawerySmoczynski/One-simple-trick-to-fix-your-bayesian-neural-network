@@ -59,7 +59,7 @@ parser.add_argument("--net_path", type=str, help="Path to state dict")
 parser.add_argument("--processes", type=int, default=2,  help="Number of processes for data loaders")
 parser.add_argument("--override_plot_data", type=bool, default=False, help="Specifies if plotting data should be overridden")
 parser.add_argument("--override_windows", type=bool, default=False, help="Specifies if likelihood windows shold be overridden")
-parser.add_argument("--rate", type=int, default=25, help="Number of likelihood estimation points")
+parser.add_argument("--rate", type=int, default=200, help="Number of likelihood estimation points")
 parser.add_argument("--batch_size", type=int, default=128)
 args = parser.parse_args()
 
@@ -120,57 +120,61 @@ plot_data = {}
 for layer_name, weights_indices in sampled_indices.items():
     windows[layer_name] = {}
     plot_data[layer_name] = {}
-    for weight_idx in weights_indices:
-        weight_name = str(weight_idx.tolist())
-        original_weight = net.state_dict()[layer_name][tuple(weight_idx)].clone()
-        
-        df = None
+    print(layer_name)
+    if layer_name == 'layer2.weight':
+        for weight_idx in weights_indices:
+            weight_name = str(weight_idx.tolist())
+            original_weight = net.state_dict()[layer_name][tuple(weight_idx)].clone()
+            
+            df = None
 
-        if exists(plot_data_path) and not override_plot_data:
-            with open(plot_data_path) as f:
-                saved = json.load(f)
-                if layer_name in saved.keys() and weight_name in saved[layer_name].keys():
-                    print(f"Restoring saved data for {layer_name} {weight_name}")
-                    df = saved[layer_name][weight_name]
-
-        if df is None:
-            df = []
-            # i = np.random.randint(0, original_parameters.numel()-1, size=1)
-            # original_weight = original_parameters[i].item()
-            # vector_to_parameters(original_parameters, net.parameters())
-
-            left_window = None
-            right_window = None
-
-            print (exists(windows_path) and not override_windows)
-            if exists(windows_path) and not override_windows:
-                print('lol')
-                with open(windows_path, 'r') as f:
+            if exists(plot_data_path) and not override_plot_data:
+                with open(plot_data_path) as f:
                     saved = json.load(f)
                     if layer_name in saved.keys() and weight_name in saved[layer_name].keys():
-                        print(f"Restoring saved windows for {layer_name} {weight_name}")
-                        left_window, right_window = saved[layer_name][weight_name]
+                        print(f"Restoring saved data for {layer_name} {weight_name}")
+                        df = saved[layer_name][weight_name]
 
-            if left_window is None:
-                left_window, right_window = find_mass(net, layer_name, weight_idx, original_weight, train_loader)
-            
-            windows[layer_name][weight_name] = (left_window, right_window)
+            if df is None:
+                df = []
+                # i = np.random.randint(0, original_parameters.numel()-1, size=1)
+                # original_weight = original_parameters[i].item()
+                # vector_to_parameters(original_parameters, net.parameters())
 
-            for value in t.linspace(original_weight - left_window, original_weight + right_window, rate, device=DEVICE):
-                print(".", end="")
-                net.state_dict()[layer_name][tuple(weight_idx)] = value
-                # modify_parameter(net, i, value)
-                ll, good = calculate_ll(train_loader, net, DEVICE)
-                df.append((value.item(), ll, good))
-            net.state_dict()[layer_name][tuple(weight_idx)] = original_weight
-            print("")
+                left_window = None
+                right_window = None
 
-        plot_data[layer_name][weight_name] = df
+                print (exists(windows_path) and not override_windows)
+                if exists(windows_path) and not override_windows:
+                    print('lol')
+                    with open(windows_path, 'r') as f:
+                        saved = json.load(f)
+                        if layer_name in saved.keys() and weight_name in saved[layer_name].keys():
+                            print(f"Restoring saved windows for {layer_name} {weight_name}")
+                            left_window, right_window = saved[layer_name][weight_name]
 
-        df = t.tensor(df).cpu().numpy()
-        id = f"{layer_name}_{'_'.join(map(str, weight_idx.cpu().numpy()))}"
-        # id = i
-        plot_1d(df, original_weight.item(), id, train_limit, f"{save_dir}/{id}.png")
+                if left_window is None:
+                    # left_window, right_window = find_mass(net, layer_name, weight_idx, original_weight, train_loader)
+                    left_window, right_window = 5, 1
+
+                windows[layer_name][weight_name] = (left_window, right_window)
+
+                for value in t.linspace(original_weight - left_window, original_weight + right_window, rate, device=DEVICE):
+                    print(".", end="")
+                    net.state_dict()[layer_name][tuple(weight_idx)] = value
+                    # modify_parameter(net, i, value)
+                    ll, good = calculate_ll(train_loader, net, DEVICE)
+                    df.append((value.item() / 10, ll, good))
+                net.state_dict()[layer_name][tuple(weight_idx)] = original_weight
+                print("")
+
+            plot_data[layer_name][weight_name] = df
+            print(df)
+
+            df = t.tensor(df).cpu().numpy()
+            id = f"{layer_name}_{'_'.join(map(str, weight_idx.cpu().numpy()))}"
+            # id = i
+            plot_1d(df, original_weight.item(), id, train_limit, f"{save_dir}/{id}.png")
 
 with open(windows_path, 'w') as f:
     json.dump(windows, f)

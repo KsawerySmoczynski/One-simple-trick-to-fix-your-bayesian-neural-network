@@ -24,12 +24,13 @@ class BNNContainer(nn.Module):
 
 
 class BNN(PyroModule):
-    def __init__(self, model: nn.Module, mean: float, std_init: Union[float, str], net: nn.Module = None):
+    def __init__(self, model: nn.Module, mean: float, std_init: Union[float, str], variance: str, net: nn.Module = None):
         super().__init__()
         self.model = model
         self.mean = torch.tensor(mean)
         self.std_init = std_init
         self.std_init_function = None
+        self.variance = variance
         self.net = net
 
     @staticmethod
@@ -98,9 +99,14 @@ class BNN(PyroModule):
                     # print(n.state_dict().keys())
                     # mean = pyro.param("mean_" + name + str(counter), self.mean)
                     # std = pyro.param("std_" + name + str(counter), self.std_init_function(m, value), constraint=constraints.positive)
-                    mean = n.state_dict()[name]
+                    if self.variance == 'auto':
+                        mean = self.mean
+                        std = 10
+                    else:
+                        mean = n.state_dict()[name]
+                        std = 10
                     # mean = self.mean
-                    std = 10
+                    
                     # print("MEAN: ", mean)
                     # print("STD: ", std)
                     setattr(
@@ -114,8 +120,8 @@ class BNN(PyroModule):
 
 
 class BNNClassification(BNN):
-    def __init__(self, model: nn.Module, mean: torch.Tensor, std_init: torch.Tensor, net: nn.Module):
-        super().__init__(model, mean, std_init, net)
+    def __init__(self, model: nn.Module, mean: torch.Tensor, std_init: torch.Tensor,  variance: str, net: nn.Module):
+        super().__init__(model, mean, std_init, variance, net)
 
     def forward(self, X: torch.Tensor, y: torch.Tensor = None) -> torch.Tensor:
         # pyro.module("model", self.model)
