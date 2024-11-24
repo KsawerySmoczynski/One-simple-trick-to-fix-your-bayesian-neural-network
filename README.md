@@ -1,4 +1,5 @@
-# Experiments repo
+# One simple trick to fix your bayesian neural network
+Codebase for [https://arxiv.org/abs/2207.13167](https://arxiv.org/abs/2207.13167)
 
 ## Experiments
 
