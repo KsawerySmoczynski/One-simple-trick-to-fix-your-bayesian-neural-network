@@ -60,11 +60,16 @@ pip install poetry
 ```
 4. Clone this repository.
 
-5. Create a virtual environment and install required packages using:
+5. Initialize submodules
+```bash
+git submodule update --init --recursive
+```
+
+6. Create a virtual environment and install required packages using:
 ```bash
 poetry install
 ```
-6. Install pre-commit hooks using:
+7. Install pre-commit hooks using:
 ```bash
 poetry run pre-commit install
 ```

@@ -1,0 +1,3 @@
+[submodule "submodules/TyXe"]
+	path = submodules/TyXe
+	url = https://github.com/KsawerySmoczynski/TyXe.git
