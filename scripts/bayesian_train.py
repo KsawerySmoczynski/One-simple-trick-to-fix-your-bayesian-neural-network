@@ -1,3 +1,5 @@
+import functools
+import sys
 from argparse import ArgumentParser
 from datetime import datetime
 from pathlib import Path
@@ -5,12 +7,15 @@ from typing import Dict
 
 import pyro
 import torch
+import tyxe
+from pyro import distributions as dist
 from pyro.infer import SVI, Predictive
 from torch.nn.utils import vector_to_parameters
 from torch.utils.tensorboard import SummaryWriter
+from tqdm import tqdm
 
 from src.commons.io import load_config, load_param_store, print_command, save_config
-from src.commons.logging import save_metrics
+from src.commons.logging import report_metrics, save_metrics
 from src.commons.pyro_training import evaluation, to_bayesian_model, train_loop
 from src.commons.utils import (
     get_configs,
@@ -29,10 +34,23 @@ def main(config: Dict, args):
     epochs = training_config["max_epochs"]
     point_estimate_model_config = {**model_config["model"]}
     model_config["model"] = traverse_config_and_initialize(model_config["model"])
-    model = to_bayesian_model(**model_config, device=device)
-    optimizer = traverse_config_and_initialize(model_config["optimizer"])
-    criterion = traverse_config_and_initialize(model_config["criterion"])
-    svi = SVI(model.model, model.guide, optimizer, loss=criterion)
+    model = model_config["model"]
+    obs = tyxe.likelihoods.Categorical(-1)
+
+    # optimizer = traverse_config_and_initialize(model_config["optimizer"])
+    # criterion = traverse_config_and_initialize(model_config["criterion"])
+
+    # Mean field inference
+    prior = tyxe.priors.IIDPrior(
+        dist.Normal(torch.tensor(0.0, device=device), torch.tensor(1.0, device=device)), expose_all=True
+    )
+
+    guide = functools.partial(
+        tyxe.guides.AutoNormal,
+        init_scale=1e-4,
+        init_loc_fn=tyxe.guides.PretrainedInitializer.from_net(model, prefix="net"),
+    )
+    bnn = tyxe.VariationalBNN(model, prior, obs, guide)
 
     datamodule = traverse_config_and_initialize(data_config)
     train_loader = datamodule.train_dataloader()
@@ -44,15 +62,48 @@ def main(config: Dict, args):
         raise AttributeError(f"{args.monitor_metric} metric wasn't initialized check configs")
 
     dataset_name = str(datamodule)
-    model_name = str(model.model)
-    activation_name = str(model.model.model.activation)
+    model_name = str(model.__class__.__name__)
+    activation_name = str(model.activation)
 
     workdir = args.workdir / dataset_name / model_name / activation_name / datetime.now().strftime("%H:%M")
     workdir.mkdir(parents=True, exist_ok=True)
     save_config(config, workdir / "config.yaml")
     writer = SummaryWriter(workdir)
+    bayesian_metrics_path = workdir / "bayesian_metrics.csv"
 
+    pbar = tqdm(total=epochs, unit="Epochs")
+
+    def callback(_i, _ii, e):
+        _i.net.eval()
+        for X, y in tqdm(validation_loader, desc=f"Evaluation", miniters=10):
+            y = y.to(device)
+            out = _i.predict(X.to(device), num_predictions=args.num_samples, aggregate=False)
+            # nsamples x batch size x classes => batch size x nsamples
+            out = out.transpose(1, 0).exp().argmax(2)
+            for metric in metrics.values():
+                metric.update(out, y)
+        report_metrics(metrics, "evaluation", _ii, writer)
+        pbar.update()
+        _i.net.train()
+
+    obs.dataset_size = len(train_loader.sampler)
+    optim = pyro.optim.Adam({"lr": 1e-3})
+    # with tyxe.poutine.local_reparameterization():
+    bnn.fit(train_loader, optim, epochs, device=device, callback=callback)
+    pbar.close()
+
+    bnn.eval()
     metrics = get_metrics(metrics_config, device)
+    for X, y in tqdm(test_loader, desc=f"test", miniters=10):
+        y = y.to(device)
+        out = bnn.predict(X.to(device), num_predictions=args.num_samples, aggregate=False)
+        # nsamples x batch size x classes => batch size x nsamples
+        out = out.transpose(1, 0).exp().argmax(2)
+        for metric in metrics.values():
+            metric.update(out, y)
+    save_metrics(bayesian_metrics_path, metrics, dataset_name, model_name, activation_name, writer, stage="test")
+
+    sys.exit(0)
 
     model, guide = train_loop(
         model.model,
@@ -73,7 +124,6 @@ def main(config: Dict, args):
     )
 
     print("Testing bayesian model...")
-    bayesian_metrics_path = workdir / "bayesian_metrics.csv"
     for metric in metrics.values():
         metric.reset()
     if args.monitor_metric and not args.early_stopping_epochs:
