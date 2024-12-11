@@ -25,7 +25,7 @@ def main(config: Dict, args):
     pyro.clear_param_store()
     seed_everything(training_config["seed"])
     training_config["num_samples"] = args.num_samples
-    device = torch.device("cuda") if (training_config["gpus"] != 0) else torch.device("cpu")
+    device = torch.device(training_config["device"])
     epochs = training_config["max_epochs"]
     point_estimate_model_config = {**model_config["model"]}
     model_config["model"] = traverse_config_and_initialize(model_config["model"])
@@ -78,7 +78,7 @@ def main(config: Dict, args):
         metric.reset()
     if args.monitor_metric and not args.early_stopping_epochs:
         load_param_store(workdir)
-    predictive = Predictive(model, guide=guide, num_samples=args.num_samples, return_sites=("obs",))
+    predictive = Predictive(model, guide=guide, num_samples=args.num_samples, return_sites=("_RETURN",))
     evaluation(predictive, test_loader, metrics, device)
     save_metrics(bayesian_metrics_path, metrics, dataset_name, model_name, activation_name, writer, stage="test")
 
