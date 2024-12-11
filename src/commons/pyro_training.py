@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Dict, Iterator, Tuple
 
+import numpy as np
 import torch
 from pyro.infer import SVI, Predictive
 from pyro.infer.autoguide import AutoDiagonalNormal
@@ -11,6 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torchmetrics import Metric
 from tqdm import tqdm
 
+from src.commons.callbacks import EarlyStopping
 from src.commons.io import save_param_store
 from src.commons.logging import (
     get_monitored_metric_init_val,
@@ -41,7 +43,7 @@ def train_loop(
     model,
     guide,
     train_loader: DataLoader,
-    test_loader: DataLoader,
+    valid_loader: DataLoader,
     svi: SVI,
     epochs: int,
     num_samples: int,
@@ -53,38 +55,41 @@ def train_loop(
     monitor_metric: str = None,
     monitor_metric_mode: str = None,
     early_stopping_epochs: int = False,
+    test_loader: DataLoader = None,
+    save_predictions_config: DataLoader = None,
 ) -> Tuple[PyroModule, PyroModule]:
+    early_stopping = None
     if monitor_metric:
-        monitor_metric_value = get_monitored_metric_init_val(monitor_metric_mode)
-    if early_stopping_epochs:
-        no_improvement_epochs = 0
-        previous_monitor_metric_value = 0
+        early_stopping = EarlyStopping(monitor_metric, monitor_metric_mode, early_stopping_epochs, path=workdir)
     for e in range(epochs):
         loss = training(svi, train_loader, e, writer, device)
         writer.add_scalar("train/loss-epoch", loss, e + 1)
         if (e + 1) % evaluation_interval == 0:
-            predictive = Predictive(model, guide=guide, num_samples=num_samples, return_sites=("obs",))
-            evaluation(predictive, test_loader, metrics, device)
+            predictive = Predictive(
+                model,
+                guide=guide,
+                num_samples=num_samples,
+                return_sites=("_RETURN",),
+            )
+            evaluation(predictive, valid_loader, metrics, device)
             if monitor_metric:
-                current_monitor_metric_value = metrics[monitor_metric].compute().cpu()
-                improved = monitor_metric_improvement(
-                    monitor_metric_value, current_monitor_metric_value, monitor_metric_mode
-                )
-                if improved:
-                    save_param_store(workdir)
-                    monitor_metric_value = current_monitor_metric_value
-            report_metrics(metrics, "evaluation", e, writer)
-            if early_stopping_epochs:
-                improved = monitor_metric_improvement(
-                    previous_monitor_metric_value, current_monitor_metric_value, monitor_metric_mode
-                )
-                previous_monitor_metric_value = current_monitor_metric_value
-                early_stop, no_improvement_epochs = eval_early_stopping(
-                    early_stopping_epochs, no_improvement_epochs, improved
-                )
-                if early_stop:
-                    break
+                if early_stopping.improved(metrics):
+                    with open(workdir / "best_epoch.txt", "w") as f:
+                        f.write(str(e))
+            report_metrics(metrics, "evaluation", e, writer, reset=True)
+            # if monitor_metric and test_loader and save_predictions_config:
+            #     if improved:
+            evaluation(predictive, test_loader, metrics, device)
+            report_metrics(metrics, "test", e, writer, reset=True)
+            if monitor_metric:
+                if early_stopping.early_stop:
+                    print("STOPPING EARLY")
+                    import sys
 
+                    sys.exit(0)
+    import sys
+
+    sys.exit(0)
     return model, guide
 
 
@@ -102,9 +107,14 @@ def training(svi: SVI, train_loader: Iterator, epoch: int, writer: SummaryWriter
     return loss
 
 
-def evaluation(predictive: Predictive, dataloader: Iterator, metrics: Dict, device: torch.DeviceObjType):
-    for X, y in tqdm(dataloader, desc=f"Evaluation", miniters=10):
+def evaluation(
+    predictive: Predictive,
+    dataloader: Iterator,
+    metrics: Dict,
+    device: torch.DeviceObjType,
+):
+    for idx, (X, y) in tqdm(enumerate(dataloader), desc=f"Evaluation", miniters=10):
         y = y.to(device)
-        out = predictive(X.to(device))["obs"].T
+        out = predictive(X.to(device))["_RETURN"]
         for metric in metrics.values():
             metric.update(out, y)
